@@ -34,6 +34,23 @@
     "scheme": "samayal",
     "experiments": {
       "typedRoutes": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "7603f568-0327-435e-8992-37b84263beb9"
+      }
+    },
+    "owner": "sudarvel1234",
+    "updates": {
+      "url": "https://u.expo.dev/7603f568-0327-435e-8992-37b84263beb9"
     }
   }
 }

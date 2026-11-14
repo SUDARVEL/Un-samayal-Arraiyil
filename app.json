@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Samayal Arayayil",
+    "slug": "Un-samayal-Arraiyil",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.samayal.arayayil"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "app.samayal.arayayil"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-font",
+      "expo-image",
+      "expo-splash-screen",
+      "expo-web-browser"
+    ],
+    "scheme": "samayal",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

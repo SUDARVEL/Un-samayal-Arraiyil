@@ -18,8 +18,6 @@ export type DislikeTarget = string;
 
 export type OnboardingAnswers = {
   name: string;
-  phone: string; // 10 digits, without +91
-  whatsappOptIn: boolean;
   household: HouseholdType;
   peopleCount: number;
   diet: Diet;
@@ -35,8 +33,6 @@ export type OnboardingAnswers = {
 // Initial selections are the ones shown selected in the Figma screens.
 const initialAnswers: OnboardingAnswers = {
   name: '',
-  phone: '',
-  whatsappOptIn: true,
   household: 'family_kids',
   peopleCount: 4,
   diet: 'Eggetarian',
@@ -82,24 +78,34 @@ export function toggle(list: string[], item: string) {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
 }
 
+/** Signs the user in anonymously (no phone or email) if there is no session yet. */
+export async function ensureSignedIn(): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured) return {};
+  const { data } = await supabase.auth.getSession();
+  if (data.session) return {};
+  const { error } = await supabase.auth.signInAnonymously();
+  return { error: error?.message };
+}
+
 /** Writes the profile, household and members to Supabase for the signed-in user. */
 export async function saveOnboarding(a: OnboardingAnswers): Promise<{ error?: string }> {
   if (!isSupabaseConfigured) return { error: 'Supabase is not configured' };
+
+  const signIn = await ensureSignedIn();
+  if (signIn.error) return signIn;
 
   const { data: auth } = await supabase.auth.getUser();
   const user = auth.user;
   if (!user) return { error: 'Not signed in' };
 
-  const { error: profileError } = await supabase.from('profiles').upsert({
+  const { error: profileError } = await supabase.from('samayal_profiles').upsert({
     id: user.id,
-    full_name: a.name || null,
-    phone: a.phone ? `+91${a.phone}` : user.phone ?? null,
-    whatsapp_opt_in: a.whatsappOptIn,
+    full_name: a.name.trim() || 'Me',
   });
   if (profileError) return { error: profileError.message };
 
   const { data: household, error: householdError } = await supabase
-    .from('households')
+    .from('samayal_households')
     .upsert(
       {
         owner_id: user.id,
@@ -112,6 +118,7 @@ export async function saveOnboarding(a: OnboardingAnswers): Promise<{ error?: st
         plan_time: a.planTime,
         reminder_time: a.reminderTime,
         reminders_enabled: a.remindersEnabled,
+        updated_at: new Date().toISOString(),
       },
       { onConflict: 'owner_id' },
     )
@@ -119,9 +126,9 @@ export async function saveOnboarding(a: OnboardingAnswers): Promise<{ error?: st
     .single();
   if (householdError) return { error: householdError.message };
 
-  await supabase.from('household_members').delete().eq('household_id', household.id);
+  await supabase.from('samayal_household_members').delete().eq('household_id', household.id);
   if (a.members.length) {
-    const { error: membersError } = await supabase.from('household_members').insert(
+    const { error: membersError } = await supabase.from('samayal_household_members').insert(
       a.members.map((name) => ({
         household_id: household.id,
         name,

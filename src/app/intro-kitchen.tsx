@@ -1,6 +1,6 @@
 // 04 Intro · Kitchen
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { FloatingChip, Intro } from '@/components/Intro';
 import { Txt } from '@/components/ui';
@@ -24,17 +24,11 @@ export default function IntroKitchen() {
       body="We plan around your vegetables, so less gets wasted or bought twice."
       cta="Get started"
       onNext={() => router.push('/sign-up')}
-      footer={
-        <Pressable accessibilityRole="link" onPress={() => router.push('/sign-up')}>
-          <Txt style={[type.caption, styles.center]}>I already have an account · Log in</Txt>
-        </Pressable>
-      }
     />
   );
 }
 
 const styles = StyleSheet.create({
-  center: { textAlign: 'center' },
   tag: {
     backgroundColor: colors.turmericTint,
     borderRadius: 999,

@@ -16,12 +16,18 @@ export default function Splash() {
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(async () => {
-      let signedIn = false;
+      // Go home only once this user has finished onboarding (their household is saved).
+      let onboarded = false;
       if (isSupabaseConfigured) {
         const { data } = await supabase.auth.getSession();
-        signedIn = Boolean(data.session);
+        if (data.session) {
+          const { count } = await supabase
+            .from('samayal_households')
+            .select('id', { count: 'exact', head: true });
+          onboarded = Boolean(count);
+        }
       }
-      if (!cancelled) router.replace(signedIn ? '/home' : '/intro-decide');
+      if (!cancelled) router.replace(onboarded ? '/home' : '/intro-decide');
     }, 1600);
     return () => {
       cancelled = true;

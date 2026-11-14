@@ -9,8 +9,7 @@ React Native app (Expo SDK 58, Expo Router, Supabase) built from the Figma file
 |---|---|---|
 | 01 | Splash | `src/app/index.tsx` |
 | 02–04 | Intro · Decide / Family / Kitchen | `intro-decide`, `intro-family`, `intro-kitchen` |
-| 05 | Sign up | `sign-up` |
-| 06 | Verify OTP | `verify` |
+| 05 | Sign up (name only) | `sign-up` |
 | 07–11 | Q1 Who · Q2 Diet · Q3 Dishes · Q4 Won’t eat · Q5 When you plan | `who`, `diet`, `dishes`, `dislikes`, `plan-time` |
 | 12 | Invite family | `invite` |
 | 13 | Turn on reminders | `reminders` |
@@ -30,15 +29,29 @@ npx expo start
 
 ### Supabase
 
-1. Create a project at supabase.com and copy **Project URL** and **anon key** into `.env`.
-2. Run `supabase/migrations/20261114000000_onboarding.sql` in the SQL editor.
-   It creates `profiles`, `households` and `household_members` with row-level security.
-3. **Authentication → Providers**: enable **Phone** (with an SMS provider such as Twilio) for
-   the OTP flow, and **Google** for "Continue with Google".
-4. **Authentication → URL Configuration**: add `samayal://auth/callback` as a redirect URL.
+The app uses the Supabase project **SUDARVEL's Project** (`soyaeuffzytrjojifvdz`), shared with
+another app, so all Samayal tables are prefixed `samayal_`.
 
-Without `.env` the app still runs end to end in demo mode: OTP and Google sign-in are
-skipped and nothing is saved.
+- Sign-up asks only for a name. Users are signed in **anonymously**
+  (Authentication → Sign In / Providers → "Allow anonymous sign-ins" is on).
+- `supabase/migrations/20261114000000_onboarding.sql` creates `samayal_profiles`,
+  `samayal_households` and `samayal_household_members`; row-level security limits every
+  user to their own rows. It is already applied to the project.
+- `.env` (git-ignored) holds `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`;
+  the same values are set as EAS environment variables for development, preview and production.
+
+## Builds and OTA updates (EAS)
+
+Expo project: `@sudarvel1234/Un-samayal-Arraiyil`. On Windows PowerShell use `npx.cmd`.
+
+```bash
+npx.cmd eas-cli@latest build -p android --profile preview          # installable APK
+npx.cmd eas-cli@latest build -p android --profile production-aab   # Play Store bundle
+npx.cmd eas-cli@latest update --channel preview --environment preview --message "what changed"
+```
+
+OTA updates reach builds on the same channel and app version; adding native packages or
+changing the version needs a new build.
 
 ### Notes
 

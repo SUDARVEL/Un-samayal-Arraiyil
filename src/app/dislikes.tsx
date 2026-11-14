@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar, Button, Chip, ProgressRow, Question, Screen, Spacer, Txt } from '@/components/ui';
 import { toggle, useOnboarding } from '@/lib/onboarding';
+import { useEditMode } from '@/lib/useEditMode';
 import { colors, fonts, type } from '@/theme';
 
 const DISLIKES = [
@@ -27,12 +28,12 @@ const AVATAR_TINTS = [colors.violetTint, colors.chilliTint, colors.turmericTint]
 export default function Dislikes() {
   const { answers, update } = useOnboarding();
   const [who, setWho] = useState<string>('everyone');
-  const next = () => router.push('/plan-time');
+  const { buttonLabel, onSkip, onContinue, saving } = useEditMode('/plan-time', 'Save & continue');
   const current = answers.dislikes[who] ?? [];
 
   return (
     <Screen gap={14}>
-      <ProgressRow step={4} onBack={() => router.back()} onSkip={next} />
+      <ProgressRow step={4} onBack={() => router.back()} onSkip={onSkip} />
       <Question title={'Anything they\nwon’t eat?'} subtitle="Set it for everyone, or person by person." />
 
       <View style={styles.who}>
@@ -78,7 +79,7 @@ export default function Dislikes() {
       </View>
 
       <Spacer />
-      <Button label="Save & continue" onPress={next} />
+      <Button label={buttonLabel} onPress={onContinue} disabled={saving} />
     </Screen>
   );
 }

@@ -47,22 +47,50 @@ const initialAnswers: OnboardingAnswers = {
 
 type Ctx = {
   answers: OnboardingAnswers;
+  /** Saved household row id, once onboarding has been saved or loaded. */
+  householdId: string | null;
   update: (patch: Partial<OnboardingAnswers>) => void;
-  save: () => Promise<{ error?: string }>;
+  save: (patch?: Partial<OnboardingAnswers>) => Promise<{ error?: string }>;
+  /** Loads the signed-in user's saved answers. `found: false` means onboarding was never saved. */
+  load: () => Promise<{
+    found: boolean;
+    error?: string;
+    answers?: OnboardingAnswers;
+    householdId?: string;
+  }>;
+  reset: () => void;
 };
 
 const OnboardingContext = createContext<Ctx | null>(null);
 
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [answers, setAnswers] = useState(initialAnswers);
+  const [householdId, setHouseholdId] = useState<string | null>(null);
 
   const value = useMemo<Ctx>(
     () => ({
       answers,
+      householdId,
       update: (patch) => setAnswers((a) => ({ ...a, ...patch })),
-      save: () => saveOnboarding(answers),
+      save: async (patch) => {
+        const next = { ...answers, ...patch };
+        if (patch) setAnswers(next);
+        const result = await saveOnboarding(next);
+        if (result.householdId) setHouseholdId(result.householdId);
+        return { error: result.error };
+      },
+      load: async () => {
+        const result = await loadSavedAnswers();
+        if (result.answers) setAnswers(result.answers);
+        if (result.householdId) setHouseholdId(result.householdId);
+        return { ...result, found: Boolean(result.householdId) };
+      },
+      reset: () => {
+        setAnswers(initialAnswers);
+        setHouseholdId(null);
+      },
     }),
-    [answers],
+    [answers, householdId],
   );
 
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>;
@@ -88,7 +116,9 @@ export async function ensureSignedIn(): Promise<{ error?: string }> {
 }
 
 /** Writes the profile, household and members to Supabase for the signed-in user. */
-export async function saveOnboarding(a: OnboardingAnswers): Promise<{ error?: string }> {
+export async function saveOnboarding(
+  a: OnboardingAnswers,
+): Promise<{ error?: string; householdId?: string }> {
   if (!isSupabaseConfigured) return { error: 'Supabase is not configured' };
 
   const signIn = await ensureSignedIn();
@@ -126,7 +156,11 @@ export async function saveOnboarding(a: OnboardingAnswers): Promise<{ error?: st
     .single();
   if (householdError) return { error: householdError.message };
 
-  await supabase.from('samayal_household_members').delete().eq('household_id', household.id);
+  const { error: clearError } = await supabase
+    .from('samayal_household_members')
+    .delete()
+    .eq('household_id', household.id);
+  if (clearError) return { error: clearError.message, householdId: household.id };
   if (a.members.length) {
     const { error: membersError } = await supabase.from('samayal_household_members').insert(
       a.members.map((name) => ({
@@ -135,8 +169,54 @@ export async function saveOnboarding(a: OnboardingAnswers): Promise<{ error?: st
         dislikes: a.dislikes[name] ?? [],
       })),
     );
-    if (membersError) return { error: membersError.message };
+    if (membersError) return { error: membersError.message, householdId: household.id };
   }
 
-  return {};
+  return { householdId: household.id };
+}
+
+/** Reads the signed-in user's profile, household and members back into answers. */
+export async function loadSavedAnswers(): Promise<{
+  answers?: OnboardingAnswers;
+  householdId?: string;
+  error?: string;
+}> {
+  if (!isSupabaseConfigured) return {};
+  const { data: session } = await supabase.auth.getSession();
+  if (!session.session) return {};
+
+  const [profile, household] = await Promise.all([
+    supabase.from('samayal_profiles').select('full_name').maybeSingle(),
+    supabase.from('samayal_households').select('*').maybeSingle(),
+  ]);
+  if (household.error) return { error: household.error.message };
+  if (!household.data) return {};
+  const h = household.data;
+
+  const { data: members, error: membersError } = await supabase
+    .from('samayal_household_members')
+    .select('name, dislikes')
+    .eq('household_id', h.id)
+    .order('created_at');
+  if (membersError) return { error: membersError.message };
+
+  const dislikes: Record<string, string[]> = { everyone: h.dislikes ?? [] };
+  for (const m of members ?? []) dislikes[m.name] = m.dislikes ?? [];
+
+  return {
+    householdId: h.id,
+    answers: {
+      name: profile.data?.full_name ?? '',
+      household: h.household_type,
+      peopleCount: h.people_count,
+      diet: h.diet,
+      allergies: h.allergies ?? [],
+      dishes: h.usual_dishes ?? [],
+      members: (members ?? []).map((m) => m.name),
+      dislikes,
+      planTime: h.plan_time,
+      reminderTime: h.reminder_time,
+      remindersEnabled: h.reminders_enabled,
+    },
+  };
 }

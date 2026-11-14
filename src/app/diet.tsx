@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { Button, Chip, ProgressRow, Question, Screen, SelectedBadge, Spacer, Txt } from '@/components/ui';
 import { toggle, useOnboarding, type Diet } from '@/lib/onboarding';
+import { useEditMode } from '@/lib/useEditMode';
 import { colors, fonts, GUTTER, type } from '@/theme';
 import { images } from '@/theme/images';
 
@@ -23,7 +24,7 @@ export default function DietScreen() {
   const { answers, update } = useOnboarding();
   const { width } = useWindowDimensions();
   const cardWidth = Math.floor((width - GUTTER * 2 - GAP * 2) / 3);
-  const next = () => router.push('/dishes');
+  const { buttonLabel, onSkip, onContinue, saving } = useEditMode('/dishes', 'Continue');
 
   const onAllergy = (a: string) => {
     if (a === 'None') return update({ allergies: answers.allergies.includes('None') ? [] : ['None'] });
@@ -32,7 +33,7 @@ export default function DietScreen() {
 
   return (
     <Screen gap={14}>
-      <ProgressRow step={2} onBack={() => router.back()} onSkip={next} />
+      <ProgressRow step={2} onBack={() => router.back()} onSkip={onSkip} />
       <Question title={'What does your\nkitchen cook?'} subtitle="We’ll only suggest dishes that fit." />
 
       <View style={styles.grid}>
@@ -64,7 +65,7 @@ export default function DietScreen() {
       </View>
 
       <Spacer />
-      <Button label="Continue" onPress={next} />
+      <Button label={buttonLabel} onPress={onContinue} disabled={saving} />
     </Screen>
   );
 }

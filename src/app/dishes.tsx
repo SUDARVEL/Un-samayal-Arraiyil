@@ -7,6 +7,7 @@ import { Modal, Pressable, StyleSheet, TextInput, useWindowDimensions, View } fr
 import PlusDarkIcon from '../../assets/icons/icon-plus-dark.svg';
 import { Button, ProgressRow, Question, Screen, SelectedBadge, Spacer, Txt } from '@/components/ui';
 import { toggle, useOnboarding } from '@/lib/onboarding';
+import { useEditMode } from '@/lib/useEditMode';
 import { colors, fonts, GUTTER, type } from '@/theme';
 import { images } from '@/theme/images';
 
@@ -29,7 +30,7 @@ export default function Dishes() {
   const itemWidth = Math.floor((width - GUTTER * 2 - COL_GAP * 2) / 3);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
-  const next = () => router.push('/dislikes');
+  const { buttonLabel, onSkip, onContinue, saving } = useEditMode('/dislikes', 'Continue');
 
   const custom = answers.dishes.filter((d) => !DISHES.some((x) => x.name === d));
 
@@ -42,7 +43,7 @@ export default function Dishes() {
 
   return (
     <Screen gap={14}>
-      <ProgressRow step={3} onBack={() => router.back()} onSkip={next} />
+      <ProgressRow step={3} onBack={() => router.back()} onSkip={onSkip} />
       <Question
         title={'What do you\nusually make?'}
         subtitle="Pick a few. We’ll learn your rhythm, then add variety."
@@ -83,7 +84,7 @@ export default function Dishes() {
       <Txt style={[type.eyebrow, styles.count]}>{`${answers.dishes.length} selected`}</Txt>
 
       <Spacer />
-      <Button label="Continue" onPress={next} />
+      <Button label={buttonLabel} onPress={onContinue} disabled={saving} />
 
       <Modal visible={adding} transparent animationType="fade" onRequestClose={() => setAdding(false)}>
         <Pressable style={styles.backdrop} onPress={() => setAdding(false)}>

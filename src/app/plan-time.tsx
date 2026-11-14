@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, Chip, ProgressRow, Question, Screen, Spacer, Txt } from '@/components/ui';
 import { useOnboarding, type PlanTime } from '@/lib/onboarding';
+import { useEditMode } from '@/lib/useEditMode';
 import { colors, type } from '@/theme';
 import { images } from '@/theme/images';
 
@@ -18,11 +19,11 @@ const TIMES = ['7:30 pm', '8:00 pm', '8:30 pm', '9:00 pm'];
 
 export default function PlanTimeScreen() {
   const { answers, update } = useOnboarding();
-  const next = () => router.push('/invite');
+  const { buttonLabel, onSkip, onContinue, saving } = useEditMode('/invite', 'Continue');
 
   return (
     <Screen gap={14}>
-      <ProgressRow step={5} onBack={() => router.back()} onSkip={next} />
+      <ProgressRow step={5} onBack={() => router.back()} onSkip={onSkip} />
       <Question title={'When do you decide\ntomorrow’s food?'} />
       <Image source={images.night} style={styles.image} contentFit="cover" />
 
@@ -55,7 +56,7 @@ export default function PlanTimeScreen() {
       </View>
 
       <Spacer />
-      <Button label="Continue" onPress={next} />
+      <Button label={buttonLabel} onPress={onContinue} disabled={saving} />
     </Screen>
   );
 }

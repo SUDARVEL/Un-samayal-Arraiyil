@@ -68,7 +68,8 @@ export function Button({ label, onPress, variant = 'primary', disabled }: Button
       style={({ pressed }) => [
         styles.button,
         secondary ? styles.buttonSecondary : styles.buttonPrimary,
-        (pressed || disabled) && styles.pressed,
+        pressed && styles.pressed,
+        disabled && styles.disabled,
       ]}
     >
       <Txt style={[type.button, { color: secondary ? colors.ink : colors.onPrimary }]}>{label}</Txt>
@@ -148,7 +149,8 @@ export function ProgressRow({
 }: {
   step: number;
   onBack: () => void;
-  onSkip: () => void;
+  /** Hidden when undefined (e.g. editing from Settings). */
+  onSkip?: () => void;
 }) {
   return (
     <View style={styles.progressRow}>
@@ -161,7 +163,7 @@ export function ProgressRow({
           />
         ))}
       </View>
-      <SkipLink onPress={onSkip} />
+      {onSkip ? <SkipLink onPress={onSkip} /> : null}
     </View>
   );
 }
@@ -210,6 +212,7 @@ const styles = StyleSheet.create({
   buttonPrimary: { backgroundColor: colors.primary },
   buttonSecondary: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border },
   pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.35 },
   chip: {
     borderWidth: 1.5,
     borderColor: colors.border,

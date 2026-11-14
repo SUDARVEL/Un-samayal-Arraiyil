@@ -7,6 +7,7 @@ import MinusIcon from '../../assets/icons/icon-minus.svg';
 import PlusIcon from '../../assets/icons/icon-plus.svg';
 import { Button, ProgressRow, Question, Screen, SelectedBadge, Spacer, Txt } from '@/components/ui';
 import { useOnboarding, type HouseholdType } from '@/lib/onboarding';
+import { useEditMode } from '@/lib/useEditMode';
 import { colors, GUTTER, type } from '@/theme';
 import { images } from '@/theme/images';
 
@@ -25,11 +26,11 @@ export default function Who() {
   const { answers, update } = useOnboarding();
   const { width } = useWindowDimensions();
   const cardWidth = (width - GUTTER * 2 - GAP) / 2;
-  const next = () => router.push('/diet');
+  const { buttonLabel, onSkip, onContinue, saving } = useEditMode('/diet', 'Continue');
 
   return (
     <Screen gap={14}>
-      <ProgressRow step={1} onBack={() => router.back()} onSkip={next} />
+      <ProgressRow step={1} onBack={() => router.back()} onSkip={onSkip} />
       <Question title="Who do you cook for?" subtitle="We’ll size every suggestion to your home." />
 
       <View style={styles.grid}>
@@ -78,7 +79,7 @@ export default function Who() {
       </View>
 
       <Spacer />
-      <Button label="Continue" onPress={next} />
+      <Button label={buttonLabel} onPress={onContinue} disabled={saving} />
     </Screen>
   );
 }

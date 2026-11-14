@@ -5,14 +5,20 @@ import { StyleSheet, View } from 'react-native';
 
 import SparkleIcon from '../../assets/icons/icon-sparkle.svg';
 import { Button, Screen, Spacer, Txt } from '@/components/ui';
+import { dishById, prepHint, suggest, type Dish } from '@/lib/dishes';
 import { useOnboarding } from '@/lib/onboarding';
+import { tomorrowDate } from '@/lib/plans';
 import { tomorrowName } from '@/lib/reminders';
 import { colors, shadow, type } from '@/theme';
-import { images } from '@/theme/images';
 
 export default function Ready() {
   const { answers } = useOnboarding();
   const name = answers.name.trim();
+  // Same ideas the home screen will show for tomorrow.
+  const [first, ...rest] = suggest(answers, tomorrowDate())
+    .map(dishById)
+    .filter((d): d is Dish => Boolean(d));
+  const people = `${answers.peopleCount} ${answers.peopleCount === 1 ? 'person' : 'people'}`;
 
   return (
     <Screen paddingTop={20} align="center">
@@ -21,27 +27,35 @@ export default function Ready() {
       </Txt>
       <Txt style={[type.display, styles.full]}>{'Your first plan\nis ready'}</Txt>
       <Txt style={[type.body, styles.full]}>
-        {`Three ideas for ${tomorrowName()} breakfast, picked for ${answers.peopleCount} people.`}
+        {first
+          ? `${rest.length ? `${rest.length + 1} ideas` : 'An idea'} for ${tomorrowName()} breakfast, picked for ${people}.`
+          : 'Nothing fits every answer yet. You can loosen one from Settings.'}
       </Txt>
 
-      <View style={styles.cardShadow}>
-        <View style={styles.card}>
-          <View style={styles.imageWrap}>
-            <Image source={images.dosa} style={StyleSheet.absoluteFill} contentFit="cover" />
-            <View style={styles.tag}>
-              <Txt style={[type.caption, { color: colors.ink }]}>Option 1 · No prep</Txt>
+      {first ? (
+        <View style={styles.cardShadow}>
+          <View style={styles.card}>
+            <View style={styles.imageWrap}>
+              <Image source={first.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <View style={styles.tag}>
+                <Txt style={[type.caption, { color: colors.ink }]}>Option 1</Txt>
+              </View>
             </View>
-          </View>
-          <View style={styles.info}>
-            <View style={styles.hint}>
-              <SparkleIcon />
-              <Txt style={[type.caption, styles.hintText]}>Batter’s ready from today</Txt>
+            <View style={styles.info}>
+              <View style={styles.hint}>
+                {first.needsBatter ? null : <SparkleIcon />}
+                <Txt style={[type.caption, styles.hintText]}>{prepHint(first, answers.planTime)}</Txt>
+              </View>
+              <Txt style={type.heading}>{first.combo}</Txt>
+              {rest.length ? (
+                <Txt style={type.caption}>
+                  {`+ ${rest.length} more ${rest.length === 1 ? 'idea' : 'ideas'}: ${rest.map((d) => d.name).join(', ')}`}
+                </Txt>
+              ) : null}
             </View>
-            <Txt style={type.heading}>Dosa + Sambar + Coconut Chutney</Txt>
-            <Txt style={type.caption}>+ 2 more ideas: Ven Pongal, Idiyappam</Txt>
           </View>
         </View>
-      </View>
+      ) : null}
 
       <Spacer />
       <Button label="See tomorrow’s plan" onPress={() => router.replace('/home')} />

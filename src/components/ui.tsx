@@ -38,7 +38,11 @@ export function Screen({ children, gap = 16, paddingTop = 8, align = 'stretch' }
         bounces={false}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.content, { gap, paddingTop, alignItems: align }]}
+        // Keep the bottom CTA 28px above the Android nav bar / iOS home indicator.
+        contentContainerStyle={[
+          styles.content,
+          { gap, paddingTop, paddingBottom: 28 + insets.bottom, alignItems: align },
+        ]}
       >
         {children}
       </ScrollView>
@@ -199,7 +203,7 @@ const styles = StyleSheet.create({
   txt: { includeFontPadding: false },
   center: { textAlign: 'center' },
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { flexGrow: 1, paddingHorizontal: GUTTER, paddingBottom: 28 },
+  content: { flexGrow: 1, paddingHorizontal: GUTTER },
   spacer: { flexGrow: 1, flexShrink: 0, flexBasis: 0, alignSelf: 'stretch' },
   button: {
     height: 52,

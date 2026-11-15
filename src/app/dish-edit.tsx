@@ -6,6 +6,7 @@ import { Alert, Platform, Pressable, StyleSheet, TextInput, View } from 'react-n
 import { CLOTH_COLOURS, DishArt, FOOD_COLOURS, SHAPES } from '@/components/DishArt';
 import { BackButton, Button, Chip, Screen, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
+import { useOnboarding } from '@/lib/onboarding';
 import { dishById, nameTaken, PART_SWAPS, type ArtShape, type DishPart } from '@/lib/dishes';
 import { colors, fonts, type } from '@/theme';
 
@@ -35,6 +36,7 @@ const confirm = (title: string, message: string, onYes: () => void) => {
 export default function DishEdit() {
   const { id, name: preset } = useLocalSearchParams<{ id?: string; name?: string }>();
   const { saveDish, deleteDish } = useAppData();
+  const { answers, save } = useOnboarding();
   const existing = id ? dishById(id) : undefined;
   const editing = Boolean(existing?.custom);
 
@@ -77,13 +79,26 @@ export default function DishEdit() {
       { name: trimmed, parts, cookMins: mins, needsBatter: batter, tags, art: { shape, food, bg } },
       editing ? existing!.id : undefined,
     );
+    if (saved) {
+      // Keep "Dishes I cook" in step: a new dish counts as one you cook; a renamed one keeps its tick.
+      const lower = (s: string) => s.trim().toLowerCase();
+      const oldName = editing ? existing!.name : null;
+      const ticked = answers.dishes.some((n) => lower(n) === lower(oldName ?? ''));
+      let dishes = answers.dishes.filter((n) => lower(n) !== lower(trimmed) && (!oldName || lower(n) !== lower(oldName)));
+      if (!editing || ticked) dishes = [...dishes, trimmed];
+      if (dishes.join('|') !== answers.dishes.join('|')) await save({ dishes });
+    }
     setBusy(false);
     if (saved) router.back();
   };
 
   const onDelete = () =>
     confirm('Delete this dish?', `${existing?.name} won’t be suggested any more.`, async () => {
-      if (existing && (await deleteDish(existing.id))) router.back();
+      if (existing && (await deleteDish(existing.id))) {
+        const dishes = answers.dishes.filter((n) => n.trim().toLowerCase() !== existing.name.toLowerCase());
+        if (dishes.length !== answers.dishes.length) await save({ dishes });
+        router.back();
+      }
     });
 
   return (

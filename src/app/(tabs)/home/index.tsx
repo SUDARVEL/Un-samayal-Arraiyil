@@ -2,9 +2,10 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import BellIcon from '../../../../assets/icons/icon-bell.svg';
+import BellDarkIcon from '../../../../assets/icons/icon-bell-dark.svg';
 import BookmarkIcon from '../../../../assets/icons/icon-bookmark.svg';
 import ChevronIcon from '../../../../assets/icons/icon-chevron.svg';
 import SparkleIcon from '../../../../assets/icons/icon-sparkle.svg';
@@ -23,6 +24,7 @@ import { useAppData } from '@/lib/app-data';
 import { comboFor, dishById, type Dish } from '@/lib/dishes';
 import { cardHint, familySays, longDate, noPrep, tintFor } from '@/lib/insights';
 import { useOnboarding } from '@/lib/onboarding';
+import { useReminders } from '@/lib/useReminders';
 import { repliedCount, wantersOf } from '@/lib/plans';
 import { cardShadow, colors, fonts, GUTTER, type } from '@/theme';
 import { images } from '@/theme/images';
@@ -34,6 +36,7 @@ export default function Today() {
   const app = useAppData();
   const { status, plan, members, saved } = app;
   const [meal, setMeal] = useState<Meal>('breakfast');
+  const reminders = useReminders();
 
   useFocusEffect(
     useCallback(() => {
@@ -144,6 +147,26 @@ export default function Today() {
           <Pressable accessibilityRole="link" onPress={() => router.push('/my-dishes')} hitSlop={10} style={styles.ownLink}>
             <Txt style={type.monoLink}>Add your own dish</Txt>
           </Pressable>
+
+          {Platform.OS !== 'web' && !reminders.working ? (
+            <View style={styles.remind}>
+              <BellDarkIcon />
+              <View style={styles.flex}>
+                <Txt style={type.bodyStrong}>
+                  {reminders.health.blocked ? 'Notifications are blocked' : 'Get tomorrow’s ideas every evening'}
+                </Txt>
+                <Txt style={type.caption}>
+                  {reminders.health.blocked
+                    ? 'Allow them in your phone’s settings to get reminders.'
+                    : `A reminder at ${answers.reminderTime}, and a quick check-in at 9:30 am.`}
+                </Txt>
+              </View>
+              <PillButton
+                label={reminders.health.blocked ? 'Fix' : 'Turn on'}
+                onPress={reminders.health.blocked ? reminders.openPhoneSettings : reminders.turnOn}
+              />
+            </View>
+          ) : null}
 
           {family.length ? (
             <>
@@ -328,5 +351,14 @@ const styles = StyleSheet.create({
   reactionText: { flex: 1, color: colors.ink },
   note: { gap: 4, padding: 16, borderRadius: 16, backgroundColor: colors.soft },
   ownLink: { alignSelf: 'flex-start' },
+  remind: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: colors.turmericTint,
+  },
   emptyImage: { height: 200, alignSelf: 'stretch', borderRadius: 24 },
 });

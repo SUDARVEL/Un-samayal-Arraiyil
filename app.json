@@ -16,7 +16,12 @@
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "app.samayal.arayayil"
+      "package": "app.samayal.arayayil",
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,7 +39,15 @@
           "backgroundColor": "#111111"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#F2B90F",
+          "defaultChannel": "reminders"
+        }
+      ]
     ],
     "scheme": "samayal",
     "experiments": {

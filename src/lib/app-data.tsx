@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -12,7 +13,7 @@ import {
 } from 'react';
 import { Alert } from 'react-native';
 
-import { setCustomDishes, type Dish } from './dishes';
+import { dishById, setCustomDishes, type Dish } from './dishes';
 import {
   deleteCustomDish,
   loadCustomDishes,
@@ -31,6 +32,7 @@ import {
 } from './household';
 import { useOnboarding, type OnboardingAnswers } from './onboarding';
 import { isoDate, loadPlan, loadPlans, savePlan, todayDate, tomorrowDate, type Plan } from './plans';
+import { dayName } from './insights';
 import { syncReminders } from './reminders';
 import { isSupabaseConfigured } from './supabase';
 
@@ -129,8 +131,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setHistory(past.filter((x) => x.date < todayDate()));
       setPlan(next);
       setStatus('ready');
-      // Keep both daily reminders scheduled (older installs only had the evening one).
-      if (a.remindersEnabled) syncReminders(a.reminderTime).catch(() => false);
     } catch (e) {
       setError(message(e));
       setStatus('error');
@@ -268,6 +268,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     (item: string) => pantryChange(() => removePantryItem(latest.current.householdId, item)),
     [pantryChange],
   );
+
+  // Keep the reminders scheduled two weeks ahead, naming tomorrow's actual ideas.
+  // Runs after every load and whenever tomorrow's plan changes (swap, lock, unlock).
+  useEffect(() => {
+    if (status !== 'ready' || !plan || !answers.remindersEnabled) return;
+    const names = plan.optionIds.map((id) => dishById(id)?.name).filter((n): n is string => Boolean(n));
+    const locked = plan.chosenId ? (dishById(plan.chosenId)?.combo ?? null) : null;
+    syncReminders(answers.reminderTime, { dayName: dayName(plan.date), ideas: names, locked }).catch(() => false);
+  }, [status, plan, answers.remindersEnabled, answers.reminderTime]);
 
   const clear = useCallback(() => {
     setStatus('idle');

@@ -7,9 +7,10 @@ import { Sheet } from '@/components/app';
 import { BackButton, Button, Screen, SkipLink, Spacer, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
 import { useOnboarding, type HouseholdType, type PlanTime } from '@/lib/onboarding';
-import { cancelReminders, MORNING_TIME, scheduleDailyReminder } from '@/lib/reminders';
+import { cancelReminders } from '@/lib/reminders';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { checkForAppUpdate, restartIntoUpdate, versionLabel } from '@/lib/updates';
+import { useReminders } from '@/lib/useReminders';
 import { colors, fonts, type } from '@/theme';
 
 const HOUSEHOLD: Record<HouseholdType, string> = {
@@ -62,26 +63,9 @@ export default function Settings() {
     if (error && isSupabaseConfigured) Alert.alert('Not saved', error);
   };
 
-  const toggleReminders = async () => {
-    if (answers.remindersEnabled) {
-      await cancelReminders().catch(() => {});
-      const { error } = await save({ remindersEnabled: false });
-      if (error && isSupabaseConfigured) Alert.alert('Not saved', error);
-      return;
-    }
-    const allowed = await scheduleDailyReminder(answers.reminderTime).catch(() => false);
-    if (!allowed) {
-      Alert.alert(
-        'Notifications are off',
-        Platform.OS === 'web'
-          ? 'Reminders work in the phone app, not in the browser.'
-          : 'Allow notifications for Samayal in your phone’s settings, then turn reminders on here.',
-      );
-      return;
-    }
-    const { error } = await save({ remindersEnabled: true });
-    if (error && isSupabaseConfigured) Alert.alert('Not saved', error);
-  };
+  const reminders = useReminders();
+  const reminderBlocked = answers.remindersEnabled && reminders.status.startsWith('Blocked');
+  const reminderLate = answers.remindersEnabled && reminders.status.endsWith('may be late');
 
   const checkUpdate = async () => {
     setChecking(true);
@@ -143,9 +127,29 @@ export default function Settings() {
         />
         <Row
           label="Reminders"
-          value={answers.remindersEnabled ? `On · ${answers.reminderTime} and ${MORNING_TIME}` : 'Off'}
-          action={answers.remindersEnabled ? 'Turn off' : 'Turn on'}
-          onEdit={toggleReminders}
+          value={reminders.status}
+          action={reminderBlocked ? 'Fix' : answers.remindersEnabled ? 'Turn off' : 'Turn on'}
+          onEdit={
+            reminderBlocked
+              ? reminders.openPhoneSettings
+              : answers.remindersEnabled
+                ? reminders.turnOff
+                : reminders.turnOn
+          }
+        />
+        {reminderLate ? (
+          <Row
+            label="On-time reminders"
+            value="Your phone may delay reminders. Allow alarms for Samayal."
+            action="Allow"
+            onEdit={reminders.offerOnTime}
+          />
+        ) : null}
+        <Row
+          label="Test notification"
+          value="Send one now to check reminders come through"
+          action="Send"
+          onEdit={reminders.test}
         />
         <Row
           label="App update"

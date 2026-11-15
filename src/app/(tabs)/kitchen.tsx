@@ -7,6 +7,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import ChevronIcon from '../../../assets/icons/icon-chevron.svg';
 import { ErrorState, LoadingState, Segmented, Sheet, TabScreen } from '@/components/app';
+import { KitchenDishes } from '@/components/KitchenDishes';
 import { Button, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
 import { STAPLES, type PantryItem, type StockState } from '@/lib/household';
@@ -43,6 +44,7 @@ export default function Kitchen() {
   const [draft, setDraft] = useState('');
   const [draftState, setDraftState] = useState<StockState>('have');
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<'veg' | 'dishes'>('veg');
 
   useFocusEffect(
     useCallback(() => {
@@ -159,6 +161,21 @@ ${message}`)) go();
         <Txt style={[type.eyebrow, styles.heroSub]}>{updatedLabel(pantry)}</Txt>
       </View>
 
+      <View style={styles.switcher}>
+        <Segmented
+          options={[
+            { id: 'veg', label: 'Vegetables' },
+            { id: 'dishes', label: 'Dishes I cook' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </View>
+
+      {view === 'dishes' ? (
+        <KitchenDishes />
+      ) : (
+      <>
       <Button label="I went shopping" onPress={() => router.push('/shopping')} />
 
       <Txt style={type.eyebrow}>Running low or out</Txt>
@@ -192,6 +209,8 @@ ${message}`)) go();
         </View>
         <ChevronIcon />
       </Pressable>
+      </>
+      )}
 
       <Sheet
         visible={editing !== null}
@@ -258,6 +277,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
     includeFontPadding: false,
   },
+  switcher: { alignSelf: 'center' },
   newState: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   more: { alignSelf: 'flex-start' },
   staples: {

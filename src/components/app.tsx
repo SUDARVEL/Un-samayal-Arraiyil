@@ -10,6 +10,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -29,6 +30,8 @@ import TabKitchenActive from '../../assets/icons/tab-kitchen-active.svg';
 import TabToday from '../../assets/icons/tab-today.svg';
 import TabTodayActive from '../../assets/icons/tab-today-active.svg';
 import { Button, Spacer, Txt } from '@/components/ui';
+import { useAppData } from '@/lib/app-data';
+import { checkForAppUpdate, restartIntoUpdate, useUpdateReady } from '@/lib/updates';
 import { colors, fonts, GUTTER, type } from '@/theme';
 import { images } from '@/theme/images';
 
@@ -43,7 +46,17 @@ const TABS: Record<string, { label: string; icon: ComponentType<SvgProps>; activ
 export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  const updateReady = useUpdateReady();
   return (
+    <View>
+      {updateReady ? (
+        <View style={styles.updateBar}>
+          <Txt style={[type.caption, styles.updateText]}>A new version is ready.</Txt>
+          <Pressable accessibilityRole="button" onPress={restartIntoUpdate} hitSlop={10}>
+            <Txt style={[type.monoLink, { color: colors.onPrimary }]}>Restart</Txt>
+          </Pressable>
+        </View>
+      ) : null}
     <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 24) }]}>
       {state.routes.map((route, index) => {
         const tab = TABS[route.name];
@@ -70,6 +83,7 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
         );
       })}
     </View>
+    </View>
   );
 }
 
@@ -84,7 +98,17 @@ export function TabScreen({
   scroll?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const { refresh } = useAppData();
+  const [refreshing, setRefreshing] = useState(false);
   const content = [styles.tabContent, { gap }];
+
+  // Pull down to reload the data and look for a newer version of the app.
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refresh(), checkForAppUpdate()]);
+    setRefreshing(false);
+  };
+
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       {scroll ? (
@@ -92,6 +116,14 @@ export function TabScreen({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.ink}
+              colors={[colors.ink]}
+            />
+          }
         >
           {children}
         </ScrollView>
@@ -322,6 +354,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
+  updateBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: GUTTER,
+    paddingVertical: 10,
+    backgroundColor: colors.primary,
+  },
+  updateText: { flex: 1, color: colors.onPrimary },
   tab: { width: 82, height: 50, alignItems: 'center', justifyContent: 'center', gap: 4 },
   tabLabel: { fontFamily: fonts.semiBold, fontSize: 13, lineHeight: 18, color: colors.muted },
   tabLabelActive: { fontFamily: fonts.extraBold, color: colors.primary },

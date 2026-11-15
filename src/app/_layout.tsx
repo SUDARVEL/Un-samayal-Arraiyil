@@ -15,6 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppDataProvider } from '@/lib/app-data';
 import { OnboardingProvider } from '@/lib/onboarding';
+import { useReminderTaps } from '@/lib/reminders';
 import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -29,6 +30,9 @@ export default function RootLayout() {
     SpaceMono_400Regular,
     SpaceMono_700Bold,
   });
+
+  // Tapping a reminder opens Today or History.
+  useReminderTaps();
 
   useEffect(() => {
     if (loaded || error) SplashScreen.hideAsync();

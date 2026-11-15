@@ -1,5 +1,4 @@
 // 21 Settings: review and edit every onboarding answer, rename, sign out.
-import * as Notifications from 'expo-notifications';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -7,7 +6,9 @@ import { Alert, Modal, Platform, Pressable, StyleSheet, TextInput, View } from '
 import { BackButton, Button, Screen, SkipLink, Spacer, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
 import { useOnboarding, type HouseholdType, type PlanTime } from '@/lib/onboarding';
+import { cancelReminders, MORNING_TIME, scheduleDailyReminder } from '@/lib/reminders';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { checkForAppUpdate, restartIntoUpdate, versionLabel } from '@/lib/updates';
 import { colors, fonts, GUTTER, type } from '@/theme';
 
 const HOUSEHOLD: Record<HouseholdType, string> = {
@@ -32,6 +33,7 @@ export default function Settings() {
   const { clear } = useAppData();
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(answers.name);
+  const [checking, setChecking] = useState(false);
 
   const people = `${answers.peopleCount} ${answers.peopleCount === 1 ? 'person' : 'people'}`;
   const allergies = answers.allergies.filter((a) => a !== 'None');
@@ -59,8 +61,42 @@ export default function Settings() {
     if (error && isSupabaseConfigured) Alert.alert('Not saved', error);
   };
 
+  const toggleReminders = async () => {
+    if (answers.remindersEnabled) {
+      await cancelReminders().catch(() => {});
+      const { error } = await save({ remindersEnabled: false });
+      if (error && isSupabaseConfigured) Alert.alert('Not saved', error);
+      return;
+    }
+    const allowed = await scheduleDailyReminder(answers.reminderTime).catch(() => false);
+    if (!allowed) {
+      Alert.alert(
+        'Notifications are off',
+        Platform.OS === 'web'
+          ? 'Reminders work in the phone app, not in the browser.'
+          : 'Allow notifications for Samayal in your phone’s settings, then turn reminders on here.',
+      );
+      return;
+    }
+    const { error } = await save({ remindersEnabled: true });
+    if (error && isSupabaseConfigured) Alert.alert('Not saved', error);
+  };
+
+  const checkUpdate = async () => {
+    setChecking(true);
+    const result = await checkForAppUpdate();
+    setChecking(false);
+    if (result === 'ready') {
+      Alert.alert('Update ready', 'A new version has been downloaded. Restart to use it.', [
+        { text: 'Later', style: 'cancel' },
+        { text: 'Restart', onPress: restartIntoUpdate },
+      ]);
+    } else if (result === 'none') Alert.alert('You’re up to date', 'This is the latest version.');
+    else Alert.alert('Couldn’t check', 'Updates aren’t available right now. Check your connection and try again.');
+  };
+
   const signOut = async () => {
-    if (Platform.OS !== 'web') await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+    await cancelReminders().catch(() => {});
     if (isSupabaseConfigured) await supabase.auth.signOut();
     reset();
     clear();
@@ -98,6 +134,18 @@ export default function Settings() {
         {rows.map((r) => (
           <Row key={r.label} label={r.label} value={r.value} onEdit={() => router.push(r.href)} />
         ))}
+        <Row
+          label="Reminders"
+          value={answers.remindersEnabled ? `On · ${answers.reminderTime} and ${MORNING_TIME}` : 'Off'}
+          action={answers.remindersEnabled ? 'Turn off' : 'Turn on'}
+          onEdit={toggleReminders}
+        />
+        <Row
+          label="App update"
+          value={checking ? 'Checking…' : versionLabel()}
+          action="Check"
+          onEdit={checkUpdate}
+        />
       </View>
 
       <Spacer />
@@ -126,7 +174,17 @@ export default function Settings() {
   );
 }
 
-function Row({ label, value, onEdit }: { label: string; value: string; onEdit: () => void }) {
+function Row({
+  label,
+  value,
+  onEdit,
+  action = 'Edit',
+}: {
+  label: string;
+  value: string;
+  onEdit: () => void;
+  action?: string;
+}) {
   return (
     <Pressable accessibilityRole="button" onPress={onEdit} style={styles.row}>
       <View style={styles.rowText}>
@@ -135,7 +193,7 @@ function Row({ label, value, onEdit }: { label: string; value: string; onEdit: (
           {value}
         </Txt>
       </View>
-      <SkipLink label="Edit" onPress={onEdit} />
+      <SkipLink label={action} onPress={onEdit} />
     </Pressable>
   );
 }

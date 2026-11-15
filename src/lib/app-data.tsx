@@ -24,6 +24,7 @@ import {
 } from './household';
 import { useOnboarding, type OnboardingAnswers } from './onboarding';
 import { isoDate, loadPlan, loadPlans, savePlan, todayDate, tomorrowDate, type Plan } from './plans';
+import { syncReminders } from './reminders';
 import { isSupabaseConfigured } from './supabase';
 
 type Status = 'idle' | 'loading' | 'error' | 'ready';
@@ -108,6 +109,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setHistory(past.filter((x) => x.date < todayDate()));
       setPlan(next);
       setStatus('ready');
+      // Keep both daily reminders scheduled (older installs only had the evening one).
+      if (a.remindersEnabled) syncReminders(a.reminderTime).catch(() => false);
     } catch (e) {
       setError(message(e));
       setStatus('error');

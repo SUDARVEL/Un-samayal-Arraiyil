@@ -1,9 +1,9 @@
 // 15 First plan ready
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import SparkleIcon from '../../assets/icons/icon-sparkle.svg';
+import { DishImage } from '@/components/DishArt';
 import { Button, Screen, Spacer, Txt } from '@/components/ui';
 import { dishById, prepHint, suggest, type Dish } from '@/lib/dishes';
 import { useOnboarding } from '@/lib/onboarding';
@@ -36,7 +36,7 @@ export default function Ready() {
         <View style={styles.cardShadow}>
           <View style={styles.card}>
             <View style={styles.imageWrap}>
-              <Image source={first.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <DishImage dish={first} style={StyleSheet.absoluteFill} />
               <View style={styles.tag}>
                 <Txt style={[type.caption, { color: colors.ink }]}>Option 1</Txt>
               </View>

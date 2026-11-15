@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import BackIcon from '../../../../assets/icons/icon-back.svg';
+import { DishImage } from '@/components/DishArt';
 import { AvatarStack, ErrorState, LoadingState, Segmented, Sheet, TabScreen } from '@/components/app';
 import { Avatar, Button, Spacer, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
@@ -79,7 +80,7 @@ export default function AskFamily() {
               onPress={() => setEditing(dish)}
               style={[styles.option, i < options.length - 1 && styles.divider]}
             >
-              <Image source={dish.image} style={styles.thumb} contentFit="cover" />
+              <DishImage dish={dish} style={styles.thumb} />
               <View style={styles.optionText}>
                 <Txt style={type.bodyStrong}>{comboFor(dish, plan.parts[dish.id])}</Txt>
                 {wanters.length ? (

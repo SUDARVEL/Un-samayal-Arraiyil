@@ -30,7 +30,7 @@ const listOrNone = (items: string[], none: string) => (items.length ? items.join
 
 export default function Settings() {
   const { answers, save, reset } = useOnboarding();
-  const { clear } = useAppData();
+  const { clear, customDishes } = useAppData();
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(answers.name);
   const [checking, setChecking] = useState(false);
@@ -134,6 +134,12 @@ export default function Settings() {
         {rows.map((r) => (
           <Row key={r.label} label={r.label} value={r.value} onEdit={() => router.push(r.href)} />
         ))}
+        <Row
+          label="Your own dishes"
+          value={customDishes.length ? customDishes.map((d) => d.name).join(', ') : 'None added yet'}
+          action={customDishes.length ? 'Edit' : 'Add'}
+          onEdit={() => router.push('/my-dishes')}
+        />
         <Row
           label="Reminders"
           value={answers.remindersEnabled ? `On · ${answers.reminderTime} and ${MORNING_TIME}` : 'Off'}

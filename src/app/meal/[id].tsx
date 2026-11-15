@@ -1,5 +1,4 @@
 // A2 Meal detail: why this idea, what's on the plate (swap parts), ask the family or lock it.
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +9,7 @@ import ClockIcon from '../../../assets/icons/icon-clock.svg';
 import MoonIcon from '../../../assets/icons/icon-moon.svg';
 import PeopleIcon from '../../../assets/icons/icon-people.svg';
 import ShareIcon from '../../../assets/icons/icon-share.svg';
+import { DishImage } from '@/components/DishArt';
 import { IconCircle, PillButton } from '@/components/app';
 import { Button, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
@@ -76,7 +76,7 @@ export default function MealDetail() {
   return (
     <View style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
-        <Image source={dish.image} style={styles.hero} contentFit="cover" />
+        <DishImage dish={dish} style={styles.hero} />
         <View style={styles.content}>
           <View style={styles.titleShadow}>
             <View style={styles.titleCard}>
@@ -113,7 +113,7 @@ export default function MealDetail() {
             <Txt style={type.heading}>Your meal</Txt>
             {partsFor(dish, overrides).map((part) => (
               <View key={part.role} style={styles.part}>
-                <Image source={partImage(dish, part.name)} style={styles.partImage} contentFit="cover" />
+                <DishImage dish={dish} source={partImage(part.name)} style={styles.partImage} />
                 <View style={styles.partText}>
                   <Txt style={type.eyebrow}>{part.role}</Txt>
                   <Txt style={type.bodyStrong}>{part.name}</Txt>

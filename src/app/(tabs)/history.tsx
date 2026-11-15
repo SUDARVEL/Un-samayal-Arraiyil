@@ -1,12 +1,12 @@
 // A6 History: "Did you make it?" for today, the week at a glance, variety and past breakfasts.
-import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import SparkleIcon from '../../../assets/icons/icon-sparkle-22.svg';
+import { DishImage } from '@/components/DishArt';
 import { ErrorState, LoadingState, PillButton, Sheet, TabScreen } from '@/components/app';
-import { Txt } from '@/components/ui';
+import { Button, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
 import { allowedDishes, comboFor, dishById, shortCombo, suggest } from '@/lib/dishes';
 import { joinNames, lower, shortDate } from '@/lib/insights';
@@ -76,7 +76,7 @@ export default function History() {
       {askMadeIt && today && todayDish ? (
         <View style={styles.madeCard}>
           <View style={styles.madeTop}>
-            <Image source={todayDish.image} style={styles.madeImage} contentFit="cover" />
+            <DishImage dish={todayDish} style={styles.madeImage} />
             <View style={styles.flex}>
               <Txt style={type.eyebrow}>Today’s breakfast</Txt>
               <Txt style={type.heading}>{`Did you make ${shortCombo(todayDish, today.parts[todayDish.id])}?`}</Txt>
@@ -145,7 +145,7 @@ export default function History() {
             const f = feedback(p, familySize);
             return (
               <View key={p.date} style={[styles.past, i < past.length - 1 && styles.divider]}>
-                <Image source={dish.image} style={styles.thumb} contentFit="cover" />
+                <DishImage dish={dish} style={styles.thumb} />
                 <View style={[styles.flex, { gap: 2 }]}>
                   <Txt style={type.eyebrow}>{shortDate(p.date)}</Txt>
                   <Txt style={type.bodyStrong}>{p.made === 'other' ? dish.combo : comboFor(dish, p.parts[dish.id])}</Txt>
@@ -162,7 +162,21 @@ export default function History() {
         </View>
       )}
 
-      <Sheet visible={picking} title="What did you make?" onClose={() => setPicking(false)}>
+      <Sheet
+        visible={picking}
+        title="What did you make?"
+        onClose={() => setPicking(false)}
+        actions={
+          <Button
+            label="Not here? Add a dish"
+            variant="secondary"
+            onPress={() => {
+              setPicking(false);
+              router.push('/dish-edit');
+            }}
+          />
+        }
+      >
         {allowedDishes(answers)
           .filter((d) => d.id !== todayDish?.id)
           .map((d) => (
@@ -175,7 +189,7 @@ export default function History() {
               }}
               style={styles.pick}
             >
-              <Image source={d.image} style={styles.pickImage} contentFit="cover" />
+              <DishImage dish={d} style={styles.pickImage} />
               <Txt style={[type.bodyStrong, styles.flex]}>{d.combo}</Txt>
             </Pressable>
           ))}

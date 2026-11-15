@@ -8,6 +8,7 @@ import BellIcon from '../../../../assets/icons/icon-bell.svg';
 import BookmarkIcon from '../../../../assets/icons/icon-bookmark.svg';
 import ChevronIcon from '../../../../assets/icons/icon-chevron.svg';
 import SparkleIcon from '../../../../assets/icons/icon-sparkle.svg';
+import { DishImage } from '@/components/DishArt';
 import {
   AvatarStack,
   ErrorState,
@@ -140,6 +141,10 @@ export default function Today() {
             ))}
           </ScrollView>
 
+          <Pressable accessibilityRole="link" onPress={() => router.push('/my-dishes')} hitSlop={10} style={styles.ownLink}>
+            <Txt style={type.monoLink}>Add your own dish</Txt>
+          </Pressable>
+
           {family.length ? (
             <>
               <SectionHeader title="Your family says" link="View all" onLink={() => router.push('/home/ask')} />
@@ -207,7 +212,7 @@ function IdeaCard({
     <Pressable accessibilityLabel={combo} accessibilityHint="Opens the meal" onPress={onOpen} style={styles.card}>
       <View style={styles.cardInner}>
       <View style={styles.cardImage}>
-        <Image source={dish.image} style={styles.fill} contentFit="cover" />
+        <DishImage dish={dish} style={styles.fill} />
         <View style={styles.tag}>
           <Txt style={[type.caption, { color: colors.ink }]}>{`Option ${index + 1}${easy ? ' · No prep' : ''}`}</Txt>
         </View>
@@ -322,5 +327,6 @@ const styles = StyleSheet.create({
   },
   reactionText: { flex: 1, color: colors.ink },
   note: { gap: 4, padding: 16, borderRadius: 16, backgroundColor: colors.soft },
+  ownLink: { alignSelf: 'flex-start' },
   emptyImage: { height: 200, alignSelf: 'stretch', borderRadius: 24 },
 });

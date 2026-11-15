@@ -1,7 +1,7 @@
 // Building blocks for the A1–A6 app screens (tab bar, pills, avatar stacks, sheets, states).
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { Image } from 'expo-image';
-import { router, usePathname } from 'expo-router';
+import { router, useIsFocused, usePathname } from 'expo-router';
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import {
   Animated,
@@ -283,8 +283,11 @@ export function Sheet({
   actions?: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
+  // A modal draws above everything, so hide it while its screen isn't the one on show
+  // (e.g. after switching tabs) instead of leaving it over another screen.
+  const focused = useIsFocused();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible && focused} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>

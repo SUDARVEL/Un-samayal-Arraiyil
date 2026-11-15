@@ -7,12 +7,20 @@ export type PartRole = 'Base' | 'Main' | 'Side';
 
 export type DishPart = { role: PartRole; name: string };
 
+/** How a family's own dish is drawn (see components/DishArt). */
+export type ArtShape = 'flat' | 'heap' | 'pieces' | 'strings' | 'bowl';
+export type DishArtSpec = { shape: ArtShape; food: string; bg: string };
+
 export type Dish = {
   id: string;
   /** Short name, matches the "usual dishes" picked in onboarding where possible. */
   name: string;
   combo: string;
-  image: number;
+  /** Illustration from the Figma file; null for a family's own dish, which is drawn from `art`. */
+  image: number | null;
+  art?: DishArtSpec;
+  /** Added by the family (stored in samayal_custom_dishes). */
+  custom?: boolean;
   /** Fermented batter that has to be ground the day before. */
   needsBatter: boolean;
   /** Lower-case ingredient / allergen tags used for diet, allergy and dislike filters. */
@@ -26,7 +34,7 @@ export type Dish = {
 
 const p = (role: PartRole, name: string): DishPart => ({ role, name });
 
-export const DISHES: Dish[] = [
+const BUILT_IN: Dish[] = [
   {
     id: 'dosa', name: 'Dosa', combo: 'Dosa + Sambar + Coconut Chutney', image: images.dosa, needsBatter: true,
     tags: ['coconut', 'onion'], cookMins: 20,
@@ -101,7 +109,49 @@ export const DISHES: Dish[] = [
   },
 ];
 
-export const dishById = (id: string) => DISHES.find((d) => d.id === id);
+// The family's own dishes, loaded with the rest of the household data.
+let customDishes: Dish[] = [];
+export function setCustomDishes(list: Dish[]) {
+  customDishes = list;
+}
+
+/** Every dish: the built-in catalog plus the family's own. */
+export const allDishes = () => [...BUILT_IN, ...customDishes];
+export const builtInDishes = () => BUILT_IN;
+
+export const dishById = (id: string) => allDishes().find((d) => d.id === id);
+
+/** True when a dish with this name already exists (case-insensitive), ignoring `exceptId`. */
+export const nameTaken = (name: string, exceptId?: string) =>
+  allDishes().some((d) => d.id !== exceptId && d.name.toLowerCase() === name.trim().toLowerCase());
+
+const titleWords = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
+
+/** Builds a Dish from a samayal_custom_dishes row. Its id is the row id prefixed with "c:". */
+export function customDish(row: {
+  id: string;
+  name: string;
+  parts: DishPart[];
+  cook_mins: number;
+  needs_batter: boolean;
+  tags: string[];
+  art: Partial<DishArtSpec>;
+}): Dish {
+  const parts = row.parts.length ? row.parts : [{ role: 'Base' as const, name: row.name }];
+  return {
+    id: `c:${row.id}`,
+    name: row.name,
+    combo: parts.map((x) => titleWords(x.name)).join(' + '),
+    image: null,
+    art: { shape: row.art.shape ?? 'heap', food: row.art.food ?? '#F2C46D', bg: row.art.bg ?? '#1A9FD8' },
+    custom: true,
+    needsBatter: row.needs_batter,
+    tags: row.tags,
+    cookMins: row.cook_mins,
+    parts,
+    uses: [],
+  };
+}
 
 /** Alternatives offered by Swap on the meal screen, per role. Base swaps the whole idea. */
 export const PART_SWAPS: Record<Exclude<PartRole, 'Base'>, string[]> = {
@@ -130,7 +180,8 @@ const PART_IMAGES: Record<string, number> = {
   'vegetable uthappam': images.vegetables,
 };
 
-export const partImage = (dish: Dish, name: string) => PART_IMAGES[name.toLowerCase()] ?? dish.image;
+/** The file's illustration for a part, or null when there isn't one (use the dish's own picture). */
+export const partImage = (name: string): number | null => PART_IMAGES[name.toLowerCase()] ?? null;
 
 /** Parts on the plate after any swaps (`overrides` maps role → chosen part). */
 export function partsFor(dish: Dish, overrides?: Partial<Record<PartRole, string>>) {
@@ -182,7 +233,7 @@ function blockedTags(a: OnboardingAnswers) {
 /** Dishes that fit the family's diet, allergies and dislikes. */
 export function allowedDishes(a: OnboardingAnswers) {
   const blocked = blockedTags(a);
-  return DISHES.filter((d) => !d.tags.some((t) => blocked.has(t)));
+  return allDishes().filter((d) => !d.tags.some((t) => blocked.has(t)));
 }
 
 export function fits(a: OnboardingAnswers, id: string) {

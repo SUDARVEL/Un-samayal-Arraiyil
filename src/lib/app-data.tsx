@@ -13,7 +13,7 @@ import {
 } from 'react';
 import { Alert } from 'react-native';
 
-import { dishById, setCustomDishes, type Dish } from './dishes';
+import { dishById, MEALS, setCustomDishes, type Dish, type Meal } from './dishes';
 import {
   deleteCustomDish,
   loadCustomDishes,
@@ -43,6 +43,10 @@ type Ctx = {
   error: string | null;
   /** Tomorrow's breakfast. */
   plan: Plan | null;
+  /** Tomorrow's plan for every meal. */
+  plans: Record<Meal, Plan | null>;
+  /** Dishes someone at home likes. */
+  liked: string[];
   /** Today's breakfast, if one was planned. */
   today: Plan | null;
   /** Plans from the last two weeks before today, newest first. */
@@ -73,6 +77,8 @@ type Ctx = {
 
 const AppDataContext = createContext<Ctx | null>(null);
 
+const NO_PLANS: Record<Meal, Plan | null> = { breakfast: null, lunch: null, dinner: null };
+
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const notSaved = (e: unknown) =>
   Alert.alert('Not saved', `${message(e)}. Check your connection and try again.`);
@@ -81,7 +87,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const { answers, householdId, load } = useOnboarding();
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [plan, setPlan] = useState<Plan | null>(null);
+  const [plans, setPlans] = useState<Record<Meal, Plan | null>>(NO_PLANS);
+  const plan = plans.breakfast;
   const [today, setToday] = useState<Plan | null>(null);
   const [history, setHistory] = useState<Plan[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -90,9 +97,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [customDishes, setCustom] = useState<Dish[]>([]);
 
   // Latest values for callbacks that should not be recreated on every answers change.
-  const latest = useRef({ answers, householdId, load, plan, today, members, pantry, saved, customDishes });
+  const latest = useRef({ answers, householdId, load, plans, today, members, pantry, saved, customDishes });
   useLayoutEffect(() => {
-    latest.current = { answers, householdId, load, plan, today, members, pantry, saved, customDishes };
+    latest.current = { answers, householdId, load, plans, today, members, pantry, saved, customDishes };
   });
 
   const refresh = useCallback(async () => {
@@ -123,13 +130,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setCustomDishes(own);
       setCustom(own);
       const avoid = [...new Set(m.flatMap((x) => x.notAgain))];
-      const next = await loadPlan(id, a, tomorrowDate(), avoid);
+      // People's favourites are suggested first, alongside the dishes you usually cook.
+      const liked = [...new Set(m.flatMap((x) => x.loves))];
+      // One meal after another, so the day's meals don't suggest the same dish twice.
+      const loaded: Plan[] = [];
+      for (const x of MEALS) {
+        const taken = loaded.flatMap((p) => p.optionIds);
+        loaded.push(await loadPlan(id, a, tomorrowDate(), avoid, x.id, liked, taken));
+      }
       setMembers(m);
       setPantryState(p);
       setSaved(s);
       setToday(past.find((x) => x.date === todayDate()) ?? null);
       setHistory(past.filter((x) => x.date < todayDate()));
-      setPlan(next);
+      setPlans({ breakfast: loaded[0], lunch: loaded[1], dinner: loaded[2] });
       setStatus('ready');
     } catch (e) {
       setError(message(e));
@@ -138,13 +152,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePlan = useCallback(async (next: Plan) => {
-    const previous = latest.current.plan;
-    setPlan(next);
+    const previous = latest.current.plans[next.meal];
+    const put = (p: Plan | null) => setPlans((all) => ({ ...all, [next.meal]: p }));
+    put(next);
     try {
-      setPlan(await savePlan(latest.current.householdId, next));
+      put(await savePlan(latest.current.householdId, next));
       return true;
     } catch (e) {
-      setPlan(previous);
+      put(previous);
       notSaved(e);
       return false;
     }
@@ -281,7 +296,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const clear = useCallback(() => {
     setStatus('idle');
     setError(null);
-    setPlan(null);
+    setPlans(NO_PLANS);
     setToday(null);
     setHistory([]);
     setMembers([]);
@@ -296,6 +311,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       status,
       error,
       plan,
+      plans,
+      liked: [...new Set(members.flatMap((m) => m.loves))],
       today,
       history,
       members,
@@ -316,7 +333,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removePantryItem: removePantry,
       clear,
     }),
-    [status, error, plan, today, history, members, pantry, saved, refresh, updatePlan, updateToday, updateMember, updatePantry, toggleSaved, customDishes, saveDish, deleteDish, addPantryItem, renamePantry, removePantry, clear],
+    [status, error, plan, plans, today, history, members, pantry, saved, refresh, updatePlan, updateToday, updateMember, updatePantry, toggleSaved, customDishes, saveDish, deleteDish, addPantryItem, renamePantry, removePantry, clear],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

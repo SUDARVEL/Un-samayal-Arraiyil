@@ -12,7 +12,7 @@ import { useAppData } from '@/lib/app-data';
 import { allowedDishes, dishById } from '@/lib/dishes';
 import type { Member } from '@/lib/household';
 import { lower, openWhatsApp, possessive, tintFor } from '@/lib/insights';
-import { toggle, useOnboarding } from '@/lib/onboarding';
+import { ME, toggle, useOnboarding } from '@/lib/onboarding';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { colors, fonts, type } from '@/theme';
 import { images } from '@/theme/images';
@@ -20,7 +20,7 @@ import { images } from '@/theme/images';
 const names = (ids: string[]) => ids.map((id) => lower(dishById(id)?.name ?? id)).join(', ');
 
 export default function Family() {
-  const { answers, save } = useOnboarding();
+  const { answers, save, update } = useOnboarding();
   const app = useAppData();
   const { members, status } = app;
   const [editing, setEditing] = useState<Member | null>(null);
@@ -114,6 +114,7 @@ export default function Family() {
         onSave={(m) => {
           setEditing(null);
           app.updateMember(m);
+          update({ likes: { ...answers.likes, [m.owner ? ME : m.name]: m.loves } });
         }}
       />
 

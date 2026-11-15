@@ -104,6 +104,7 @@ export function FamilyMembers() {
       members: members.map((m) => (m === old ? name : m)),
       relations: { ...moveKey(relations, old, name), [name]: editing.relation },
       dislikes: moveKey(answers.dislikes, old, name),
+      likes: moveKey(answers.likes, old, name),
     });
     setEditing(null);
   };
@@ -119,6 +120,7 @@ export function FamilyMembers() {
       peopleCount: Math.max(1, Math.min(answers.peopleCount, next.length + 1)),
       relations: without(relations),
       dislikes: without(answers.dislikes),
+      likes: without(answers.likes),
     });
     setEditing(null);
   };

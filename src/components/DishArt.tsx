@@ -38,9 +38,9 @@ export const SHAPES: { id: ArtShape; label: string }[] = [
 /** Colour of a curry, chutney or side by its name. */
 function bowlColour(name: string) {
   const n = name.toLowerCase();
-  if (/sambar|rasam|kuzhambu/.test(n)) return '#E07A2E';
-  if (/tomato|chilli|onion chutney|red/.test(n)) return '#D9432B';
-  if (/mint|coriander|green|palak/.test(n)) return '#5E9E3A';
+  if (/sambar|rasam|kuzhambu|salna/.test(n)) return '#E07A2E';
+  if (/tomato|chilli|onion chutney|pickle|red/.test(n)) return '#D9432B';
+  if (/mint|coriander|green|palak|kootu|poriyal/.test(n)) return '#5E9E3A';
   if (/coconut|curd|raita|stew|white/.test(n)) return '#F6F3EA';
   if (/dal|kurma|korma|kadhi|potato|masala/.test(n)) return '#EDB43A';
   if (/fish|chicken|mutton|egg|meat/.test(n)) return '#B8502C';

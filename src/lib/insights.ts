@@ -82,8 +82,6 @@ export function whyThis(
   if (days) lines.push(`You last made ${lower(dish.name)} ${days} ${days === 1 ? 'day' : 'days'} ago.`);
   else if (ctx.usual.some((u) => lower(u) === lower(dish.name))) lines.push('It’s one of your usual breakfasts.');
   else lines.push('Something different from your usual breakfasts.');
-  const wanters = wantersOf(ctx.plan, dish.id);
-  if (wanters.length) lines.push(`${joinNames(wanters)} asked for it.`);
   const fans = ctx.members.filter((m) => m.loves.includes(dish.id)).map((m) => m.name);
   if (fans.length) lines.push(`${joinNames(fans)} ${fans.length === 1 ? 'loves' : 'love'} it.`);
   lines.push(`It fits your ${lower(ctx.diet)} diet.`);

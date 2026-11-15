@@ -145,13 +145,15 @@ export function SkipLink({ onPress, label = 'Skip' }: { onPress: () => void; lab
   );
 }
 
-/** Back arrow, 5-step progress bar and Skip — top of the question screens. */
+/** Back arrow, step progress bar and Skip — top of the question screens. */
 export function ProgressRow({
   step,
+  total = 6,
   onBack,
   onSkip,
 }: {
   step: number;
+  total?: number;
   onBack: () => void;
   /** Hidden when undefined (e.g. editing from Settings). */
   onSkip?: () => void;
@@ -160,7 +162,7 @@ export function ProgressRow({
     <View style={styles.progressRow}>
       <BackButton onPress={onBack} />
       <View style={styles.progress}>
-        {[1, 2, 3, 4, 5].map((i) => (
+        {Array.from({ length: total }, (_, k) => k + 1).map((i) => (
           <View
             key={i}
             style={[styles.progressBar, { backgroundColor: i <= step ? colors.primary : colors.border }]}

@@ -28,7 +28,7 @@ const AVATAR_TINTS = [colors.violetTint, colors.chilliTint, colors.turmericTint]
 export default function Dislikes() {
   const { answers, update } = useOnboarding();
   const [who, setWho] = useState<string>('everyone');
-  const { buttonLabel, onSkip, onContinue, saving } = useEditMode('/plan-time', 'Save & continue');
+  const { buttonLabel, onSkip, onContinue, saving } = useEditMode('/likes', 'Save & continue');
   const current = answers.dislikes[who] ?? [];
 
   return (

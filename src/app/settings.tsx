@@ -49,6 +49,11 @@ export default function Settings() {
     { label: 'Usual dishes', value: listOrNone(answers.dishes, 'None picked'), href: '/dishes?edit=1' },
     { label: 'Won’t eat', value: listOrNone(answers.dislikes.everyone ?? [], 'Nothing'), href: '/dislikes?edit=1' },
     {
+      label: 'What they like',
+      value: `${Object.values(answers.likes).filter((l) => l.length).length} of ${answers.members.length + 1} people have favourites`,
+      href: '/likes?edit=1',
+    },
+    {
       label: 'Planning and reminder',
       value: `${PLAN_TIME[answers.planTime]} · ${answers.reminderTime}`,
       href: '/plan-time?edit=1',

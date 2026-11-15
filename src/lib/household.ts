@@ -1,5 +1,5 @@
 // Family tastes (loves / "not again") and kitchen stock, stored per household.
-import { customDish, type Dish, type DishArtSpec, type DishPart } from './dishes';
+import { customDish, type Dish, type DishArtSpec, type DishPart, type Meal } from './dishes';
 import { isSupabaseConfigured, supabase } from './supabase';
 
 /** A person at home. `owner` is the signed-in cook; the rest are samayal_household_members rows. */
@@ -181,9 +181,10 @@ export type CustomDishInput = {
   needsBatter: boolean;
   tags: string[];
   art: DishArtSpec;
+  meals: Meal[];
 };
 
-const DISH_COLUMNS = 'id, name, parts, cook_mins, needs_batter, tags, art';
+const DISH_COLUMNS = 'id, name, parts, cook_mins, needs_batter, tags, art, meals';
 
 export async function loadCustomDishes(householdId: string | null): Promise<Dish[]> {
   if (!isSupabaseConfigured || !householdId) return [];
@@ -205,6 +206,7 @@ export async function saveCustomDish(householdId: string | null, input: CustomDi
     needs_batter: input.needsBatter,
     tags: input.tags,
     art: input.art,
+    meals: input.meals,
     updated_at: new Date().toISOString(),
   };
   if (!isSupabaseConfigured || !householdId) {

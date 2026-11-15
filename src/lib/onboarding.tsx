@@ -26,6 +26,8 @@ export type OnboardingAnswers = {
   members: string[];
   /** Member name → how they're related to you ("Son", "Mother-in-law", ...). */
   relations: Record<string, string>;
+  /** Member name (or ME for you) → dish ids they like. */
+  likes: Record<string, string[]>;
   dislikes: Record<DislikeTarget, string[]>;
   planTime: PlanTime;
   reminderTime: string;
@@ -42,6 +44,7 @@ const initialAnswers: OnboardingAnswers = {
   dishes: ['Dosa', 'Idli', 'Pongal', 'Sambar rice'],
   members: ['Ravi', 'Divya', 'Karthik'],
   relations: { Ravi: 'Husband', Divya: 'Daughter', Karthik: 'Son' },
+  likes: {},
   dislikes: { everyone: ['Bitter gourd', 'Mushroom'] },
   planTime: 'night_before',
   reminderTime: '8:30 pm',
@@ -105,6 +108,9 @@ export function useOnboarding() {
   return ctx;
 }
 
+/** Key for your own entry in name-keyed answers (likes). */
+export const ME = '__me';
+
 export function toggle(list: string[], item: string) {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
 }
@@ -144,6 +150,7 @@ export async function saveOnboarding(
         owner_id: user.id,
         household_type: a.household,
         people_count: a.peopleCount,
+        owner_loves: a.likes[ME] ?? [],
         diet: a.diet,
         allergies: a.allergies,
         usual_dishes: a.dishes,
@@ -177,7 +184,11 @@ export async function saveOnboarding(
     if (!a.members.includes(m.name)) continue;
     const { error } = await supabase
       .from('samayal_household_members')
-      .update({ dislikes: a.dislikes[m.name] ?? [], relation: a.relations[m.name] ?? '' })
+      .update({
+        dislikes: a.dislikes[m.name] ?? [],
+        relation: a.relations[m.name] ?? '',
+        loves: a.likes[m.name] ?? [],
+      })
       .eq('id', m.id);
     if (error) return fail(error.message);
   }
@@ -190,6 +201,7 @@ export async function saveOnboarding(
         name,
         dislikes: a.dislikes[name] ?? [],
         relation: a.relations[name] ?? '',
+        loves: a.likes[name] ?? [],
       })),
     );
     if (error) return fail(error.message);
@@ -218,16 +230,18 @@ export async function loadSavedAnswers(): Promise<{
 
   const { data: members, error: membersError } = await supabase
     .from('samayal_household_members')
-    .select('name, dislikes, relation')
+    .select('name, dislikes, relation, loves')
     .eq('household_id', h.id)
     .order('created_at');
   if (membersError) return { error: membersError.message };
 
   const dislikes: Record<string, string[]> = { everyone: h.dislikes ?? [] };
   const relations: Record<string, string> = {};
+  const likes: Record<string, string[]> = { [ME]: h.owner_loves ?? [] };
   for (const m of members ?? []) {
     dislikes[m.name] = m.dislikes ?? [];
     relations[m.name] = m.relation ?? '';
+    likes[m.name] = m.loves ?? [];
   }
 
   return {
@@ -241,6 +255,7 @@ export async function loadSavedAnswers(): Promise<{
       dishes: h.usual_dishes ?? [],
       members: (members ?? []).map((m) => m.name),
       relations,
+      likes,
       dislikes,
       planTime: h.plan_time,
       reminderTime: h.reminder_time,

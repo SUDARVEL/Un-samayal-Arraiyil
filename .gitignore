@@ -42,3 +42,7 @@ yarn-error.*
 
 # Supabase keys
 .env
+
+# EAS command logs
+ota.log
+build.log

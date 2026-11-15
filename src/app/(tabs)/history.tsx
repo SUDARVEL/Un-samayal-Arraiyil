@@ -11,20 +11,23 @@ import { useAppData } from '@/lib/app-data';
 import { allowedDishes, comboFor, dishById, shortCombo, suggest } from '@/lib/dishes';
 import { joinNames, lower, shortDate } from '@/lib/insights';
 import { useOnboarding } from '@/lib/onboarding';
-import { cookedDishId, isoDate, notAgainOf, parseDate, todayDate, wantersOf, type Plan } from '@/lib/plans';
+import type { Member } from '@/lib/household';
+import { cookedDishId, isoDate, parseDate, todayDate, type Plan } from '@/lib/plans';
 import { colors, softShadow, type } from '@/theme';
 
 const LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 /** Feedback line under a past breakfast. */
-function feedback(plan: Plan, familySize: number): { text: string; color: string } {
+/** Line under a past meal: who doesn't want it again, or who likes it (from Family tastes). */
+function feedback(plan: Plan, members: Member[]): { text: string; color: string } {
   if (plan.made === 'other') return { text: 'Made something else', color: colors.muted };
   const id = plan.chosenId!;
-  const nope = notAgainOf(plan, id);
+  const name = (m: Member) => (m.owner ? 'You' : m.name);
+  const nope = members.filter((m) => m.notAgain.includes(id)).map(name);
   if (nope.length) return { text: `${joinNames(nope)}: not again`, color: colors.chilli };
-  const fans = wantersOf(plan, id);
-  if (familySize && fans.length >= familySize) return { text: 'Everyone liked', color: colors.leaf };
-  if (fans.length) return { text: `${joinNames(fans)} loved it`, color: colors.leaf };
+  const fans = members.filter((m) => m.loves.includes(id)).map(name);
+  if (members.length > 1 && fans.length >= members.length) return { text: 'Everyone likes it', color: colors.leaf };
+  if (fans.length) return { text: `${joinNames(fans)} ${fans.length === 1 && fans[0] !== 'You' ? 'likes' : 'like'} it`, color: colors.leaf };
   return { text: plan.made === 'yes' ? 'Made it' : 'Planned', color: plan.made === 'yes' ? colors.leaf : colors.muted };
 }
 
@@ -44,7 +47,6 @@ export default function History() {
   if (status === 'idle' || (status === 'loading' && !app.plan)) return <LoadingState label="Loading your history…" />;
   if (status === 'error' && !app.plan) return <ErrorState title="Couldn’t load your history" onRetry={app.refresh} />;
 
-  const familySize = members.filter((m) => !m.owner).length;
   const todayDish = today?.chosenId ? dishById(today.chosenId) : undefined;
   const askMadeIt = Boolean(today && todayDish && !today.made);
 
@@ -142,7 +144,7 @@ export default function History() {
           {past.map((p, i) => {
             const dish = dishById(cookedDishId(p)!);
             if (!dish) return null;
-            const f = feedback(p, familySize);
+            const f = feedback(p, members);
             return (
               <View key={p.date} style={[styles.past, i < past.length - 1 && styles.divider]}>
                 <DishImage dish={dish} style={styles.thumb} />

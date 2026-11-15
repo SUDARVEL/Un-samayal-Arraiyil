@@ -1,6 +1,6 @@
-// Breakfast plans (samayal_plans): three ideas, swaps, family votes, the locked-in pick and
-// whether it was actually made.
-import { fits, suggest, type PartRole } from './dishes';
+// Meal plans (samayal_plans): three ideas per meal, swaps, the locked-in pick and whether it
+// was actually made.
+import { fits, suggest, type Meal, type PartRole } from './dishes';
 import type { OnboardingAnswers } from './onboarding';
 import { isSupabaseConfigured, supabase } from './supabase';
 
@@ -10,6 +10,7 @@ export type Vote = { want: string | null; notAgain: string[] };
 export type Plan = {
   id: string | null;
   date: string; // YYYY-MM-DD
+  meal: Meal;
   optionIds: string[];
   rejectedIds: string[];
   chosenId: string | null;
@@ -41,11 +42,12 @@ export function parseDate(date: string) {
 }
 
 const SELECT =
-  'id, plan_date, option_ids, rejected_ids, chosen_id, votes, asked_at, parts, made, made_dish_id';
+  'id, plan_date, meal, option_ids, rejected_ids, chosen_id, votes, asked_at, parts, made, made_dish_id';
 
 type Row = {
   id: string;
   plan_date: string;
+  meal: Meal;
   option_ids: string[];
   rejected_ids: string[];
   chosen_id: string | null;
@@ -59,6 +61,7 @@ type Row = {
 const fromRow = (r: Row): Plan => ({
   id: r.id,
   date: r.plan_date,
+  meal: r.meal,
   optionIds: r.option_ids,
   rejectedIds: r.rejected_ids,
   chosenId: r.chosen_id,
@@ -69,9 +72,10 @@ const fromRow = (r: Row): Plan => ({
   madeDishId: r.made_dish_id,
 });
 
-export const emptyPlan = (date: string, optionIds: string[] = []): Plan => ({
+export const emptyPlan = (date: string, optionIds: string[] = [], meal: Meal = 'breakfast'): Plan => ({
   id: null,
   date,
+  meal,
   optionIds,
   rejectedIds: [],
   chosenId: null,
@@ -83,9 +87,9 @@ export const emptyPlan = (date: string, optionIds: string[] = []): Plan => ({
 });
 
 /** Drops ideas that no longer fit (answers were edited) and tops the list back up to three. */
-function refresh(plan: Plan, a: OnboardingAnswers, avoid: string[]): Plan {
-  const kept = plan.optionIds.filter((id) => fits(a, id));
-  const extra = suggest(a, plan.date, [...kept, ...plan.rejectedIds], 3 - kept.length, avoid);
+function refresh(plan: Plan, a: OnboardingAnswers, avoid: string[], liked: string[], taken: string[]): Plan {
+  const kept = plan.optionIds.filter((id) => fits(a, id, plan.meal));
+  const extra = suggest(a, plan.date, [...kept, ...plan.rejectedIds, ...taken], 3 - kept.length, avoid, plan.meal, liked);
   const chosenId = plan.chosenId && kept.includes(plan.chosenId) ? plan.chosenId : null;
   return { ...plan, optionIds: [...kept, ...extra], chosenId };
 }
@@ -93,14 +97,21 @@ function refresh(plan: Plan, a: OnboardingAnswers, avoid: string[]): Plan {
 const same = (a: Plan, b: Plan) =>
   a.chosenId === b.chosenId && a.optionIds.join() === b.optionIds.join();
 
-/** Loads the plan for `date`, creating it the first time. `avoid`: dishes someone said "not again" to. */
+/**
+ * Loads the plan for one meal on `date`, creating it the first time.
+ * `avoid`: dishes someone said "not again" to; `liked`: dishes someone at home likes.
+ */
 export async function loadPlan(
   householdId: string | null,
   a: OnboardingAnswers,
   date = tomorrowDate(),
   avoid: string[] = [],
+  meal: Meal = 'breakfast',
+  liked: string[] = [],
+  /** Ideas already used by the day's other meals, so lunch and dinner don't repeat them. */
+  taken: string[] = [],
 ): Promise<Plan> {
-  const fresh = emptyPlan(date, suggest(a, date, [], 3, avoid));
+  const fresh = emptyPlan(date, suggest(a, date, taken, 3, avoid, meal, liked), meal);
   if (!isSupabaseConfigured || !householdId) return fresh;
 
   const { data, error } = await supabase
@@ -108,13 +119,13 @@ export async function loadPlan(
     .select(SELECT)
     .eq('household_id', householdId)
     .eq('plan_date', date)
-    .eq('meal', 'breakfast')
+    .eq('meal', meal)
     .maybeSingle<Row>();
   if (error) throw new Error(error.message);
 
   if (data) {
     const stored = fromRow(data);
-    const updated = refresh(stored, a, avoid);
+    const updated = refresh(stored, a, avoid, liked, taken);
     return same(stored, updated) ? stored : savePlan(householdId, updated);
   }
   if (!fresh.optionIds.length) return fresh; // nothing fits: show the empty state, store nothing
@@ -145,7 +156,7 @@ export async function savePlan(householdId: string | null, plan: Plan): Promise<
       {
         household_id: householdId,
         plan_date: plan.date,
-        meal: 'breakfast',
+        meal: plan.meal,
         option_ids: plan.optionIds,
         rejected_ids: plan.rejectedIds,
         chosen_id: plan.chosenId,
@@ -166,9 +177,15 @@ export async function savePlan(householdId: string | null, plan: Plan): Promise<
 }
 
 /** Replaces one idea with the next best one. Returns null when there is nothing left to offer. */
-export function swapOption(plan: Plan, id: string, a: OnboardingAnswers, avoid: string[] = []): Plan | null {
+export function swapOption(
+  plan: Plan,
+  id: string,
+  a: OnboardingAnswers,
+  avoid: string[] = [],
+  liked: string[] = [],
+): Plan | null {
   const rejectedIds = [...plan.rejectedIds, id];
-  const [next] = suggest(a, plan.date, [...plan.optionIds, ...rejectedIds], 1, avoid);
+  const [next] = suggest(a, plan.date, [...plan.optionIds, ...rejectedIds], 1, avoid, plan.meal, liked);
   if (!next) return null;
   // Votes for the swapped-out idea no longer apply.
   const votes = Object.fromEntries(

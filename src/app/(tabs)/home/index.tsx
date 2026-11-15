@@ -1,4 +1,5 @@
-// A1 Today · Tomorrow's breakfast: three ideas, family replies, lock one in.
+// A1 Today · Tomorrow's breakfast, lunch and dinner: three ideas each, who at home would like
+// them, lock one in.
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -21,22 +22,20 @@ import {
 } from '@/components/app';
 import { Avatar, Button, Spacer, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
-import { comboFor, dishById, type Dish } from '@/lib/dishes';
-import { cardHint, familySays, longDate, noPrep, tintFor } from '@/lib/insights';
+import { comboFor, dishById, MEALS, mealLabel, type Dish, type Meal } from '@/lib/dishes';
+import { cardHint, joinNames, longDate, noPrep, tintFor } from '@/lib/insights';
 import { useOnboarding } from '@/lib/onboarding';
 import { useReminders } from '@/lib/useReminders';
-import { repliedCount, wantersOf } from '@/lib/plans';
 import { cardShadow, colors, fonts, GUTTER, type } from '@/theme';
 import { images } from '@/theme/images';
-
-type Meal = 'breakfast' | 'lunch';
 
 export default function Today() {
   const { answers } = useOnboarding();
   const app = useAppData();
-  const { status, plan, members, saved } = app;
+  const { status, plans, members, saved } = app;
   const [meal, setMeal] = useState<Meal>('breakfast');
   const reminders = useReminders();
+  const plan = plans[meal];
 
   useFocusEffect(
     useCallback(() => {
@@ -52,12 +51,24 @@ export default function Today() {
   const options = plan.optionIds.map(dishById).filter((d): d is Dish => Boolean(d));
   const name = answers.name.trim();
   const family = members.filter((m) => !m.owner);
-  const replied = repliedCount(plan);
   const chosen = plan.chosenId ? dishById(plan.chosenId) : undefined;
   const people = `${answers.peopleCount} ${answers.peopleCount === 1 ? 'person' : 'people'}`;
   const subtitle = chosen
     ? `${longDate(plan.date)} · ${chosen.name} locked in`
     : `${longDate(plan.date)} · ${options.length} ${options.length === 1 ? 'idea' : 'ideas'} for ${people}`;
+
+  /** Everyone at home (you included) who likes a dish. */
+  const fansOf = (dishId: string) =>
+    members.filter((m) => m.loves.includes(dishId)).map((m) => (m.owner ? 'You' : m.name));
+
+  // "Divya would like options 1 and 2. Ravi would like option 3."
+  const likers = [...new Set(options.flatMap((d) => fansOf(d.id)))];
+  const liking = likers
+    .map((person) => {
+      const nums = options.flatMap((d, i) => (fansOf(d.id).includes(person) ? [String(i + 1)] : []));
+      return `${person} would like ${nums.length === 1 ? 'option' : 'options'} ${joinNames(nums)}.`;
+    })
+    .join(' ');
 
   const lock = (id: string) => app.updatePlan({ ...plan, chosenId: plan.chosenId === id ? null : id });
 
@@ -67,53 +78,49 @@ export default function Today() {
         <Pressable accessibilityRole="button" accessibilityLabel="Settings" onPress={() => router.push('/settings')}>
           <Avatar initial={(name.charAt(0) || 'M').toUpperCase()} size={36} />
         </Pressable>
-        {family.length ? (
+        {Platform.OS !== 'web' && reminders.working ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${replied} family replies`}
-            onPress={() => router.push('/home/ask')}
+            accessibilityLabel={`Reminders on at ${answers.reminderTime}`}
+            onPress={() => router.push('/settings')}
             style={styles.replies}
           >
             <BellIcon />
-            <Txt style={[type.bodyStrong, { color: colors.onPrimary }]}>{String(replied)}</Txt>
+            <Txt style={[type.caption, { color: colors.onPrimary }]}>{answers.reminderTime}</Txt>
           </Pressable>
         ) : null}
       </View>
 
       <View style={styles.title}>
-        <Txt style={type.display}>Tomorrow’s Breakfast</Txt>
+        <Txt style={type.display}>{`Tomorrow’s ${mealLabel(meal)}`}</Txt>
         <Txt style={type.caption}>{subtitle}</Txt>
       </View>
 
       <View style={styles.mealTabs} accessibilityRole="tablist">
-        {(['breakfast', 'lunch'] as const).map((m) => (
+        {MEALS.map((m) => (
           <Pressable
-            key={m}
+            key={m.id}
             accessibilityRole="tab"
-            accessibilityState={{ selected: meal === m }}
-            onPress={() => setMeal(m)}
+            accessibilityState={{ selected: meal === m.id }}
+            onPress={() => setMeal(m.id)}
             hitSlop={8}
           >
-            <Txt style={meal === m ? styles.mealOn : styles.mealOff}>{m === 'breakfast' ? 'Breakfast' : 'Lunch'}</Txt>
+            <Txt style={meal === m.id ? styles.mealOn : styles.mealOff}>{m.label}</Txt>
           </Pressable>
         ))}
       </View>
 
-      {meal === 'lunch' ? (
-        <View style={styles.note}>
-          <Txt style={type.bodyStrong}>Lunch planning is coming soon</Txt>
-          <Txt style={type.caption}>For now Samayal plans tomorrow’s breakfast.</Txt>
-        </View>
-      ) : !options.length ? (
+      {!options.length ? (
         <>
           <Image source={images.vegetables} style={styles.emptyImage} contentFit="cover" />
-          <Txt style={[type.heading, styles.center]}>Nothing fits yet</Txt>
+          <Txt style={[type.heading, styles.center]}>{`No ${mealLabel(meal).toLowerCase()} ideas fit yet`}</Txt>
           <Txt style={[type.body, styles.center]}>
-            Your diet, allergies and the foods your family won’t eat rule out every dish we know. Loosen one and
-            we’ll find ideas.
+            Your diet, allergies and the foods your family won’t eat rule out every dish we know for this meal. Add
+            one you make, or loosen an answer.
           </Txt>
           <Spacer />
-          <Button label="Edit preferences" onPress={() => router.push('/settings')} />
+          <Button label="Add a dish" onPress={() => router.push('/dish-edit')} />
+          <Button label="Edit preferences" variant="secondary" onPress={() => router.push('/settings')} />
         </>
       ) : (
         <>
@@ -133,11 +140,11 @@ export default function Today() {
                 combo={comboFor(dish, plan.parts[dish.id])}
                 hint={cardHint(dish, { ...app, planTime: answers.planTime })}
                 noPrep={noPrep(dish, app.today)}
-                wanters={wantersOf(plan, dish.id)}
-                tint={(n) => tintFor(members, n)}
+                fans={fansOf(dish.id)}
+                tint={(n) => (n === 'You' ? colors.turmericTint : tintFor(members, n))}
                 locked={plan.chosenId === dish.id}
                 saved={saved.includes(dish.id)}
-                onOpen={() => router.push({ pathname: '/meal/[id]', params: { id: dish.id } })}
+                onOpen={() => router.push({ pathname: '/meal/[id]', params: { id: dish.id, meal } })}
                 onLock={() => lock(dish.id)}
                 onSave={() => app.toggleSaved(dish.id)}
               />
@@ -170,27 +177,24 @@ export default function Today() {
 
           {family.length ? (
             <>
-              <SectionHeader title="Your family says" link="View all" onLink={() => router.push('/home/ask')} />
+              <SectionHeader title="Picked for your family" link="Tastes" onLink={() => router.navigate('/family')} />
               <Pressable
                 accessibilityRole="button"
-                onPress={() => router.push('/home/ask')}
+                accessibilityHint="Opens Family, where you set what each person likes"
+                onPress={() => router.navigate('/family')}
                 style={styles.reactions}
               >
                 <AvatarStack
                   size={28}
-                  people={(replied
-                    ? Object.keys(plan.votes).filter((n) => plan.votes[n].want || plan.votes[n].notAgain.length)
-                    : family.map((m) => m.name)
-                  )
+                  people={(likers.length ? likers : family.map((m) => m.name))
                     .slice(0, 3)
-                    .map((n) => ({ initial: n.charAt(0).toUpperCase(), tint: tintFor(members, n) }))}
+                    .map((n) => ({
+                      initial: n.charAt(0).toUpperCase(),
+                      tint: n === 'You' ? colors.turmericTint : tintFor(members, n),
+                    }))}
                 />
                 <Txt style={[type.caption, styles.reactionText]}>
-                  {replied
-                    ? familySays(plan)
-                    : plan.askedAt
-                      ? 'No replies yet. Tap to note what they said.'
-                      : 'Ask the family on WhatsApp which one they want.'}
+                  {liking || 'Tell us what each person likes, and we’ll pick ideas they’ll enjoy.'}
                 </Txt>
                 <ChevronIcon />
               </Pressable>
@@ -208,7 +212,7 @@ function IdeaCard({
   combo,
   hint,
   noPrep: easy,
-  wanters,
+  fans,
   tint,
   locked,
   saved,
@@ -221,7 +225,8 @@ function IdeaCard({
   combo: string;
   hint: string;
   noPrep: boolean;
-  wanters: string[];
+  /** People at home who like this dish. */
+  fans: string[];
   tint: (name: string) => string;
   locked: boolean;
   saved: boolean;
@@ -229,7 +234,7 @@ function IdeaCard({
   onLock: () => void;
   onSave: () => void;
 }) {
-  const count = wanters.length;
+  const count = fans.length;
   return (
     // No button role here: the card holds the Save and Lock buttons, and buttons can't nest on web.
     <Pressable accessibilityLabel={combo} accessibilityHint="Opens the meal" onPress={onOpen} style={styles.card}>
@@ -263,11 +268,11 @@ function IdeaCard({
             {count ? (
               <AvatarStack
                 size={24}
-                people={wanters.slice(0, 3).map((n) => ({ initial: n.charAt(0).toUpperCase(), tint: tint(n) }))}
+                people={fans.slice(0, 3).map((n) => ({ initial: n.charAt(0).toUpperCase(), tint: tint(n) }))}
               />
             ) : null}
-            <Txt style={type.caption}>
-              {count ? `${count} ${count === 1 ? 'wants' : 'want'} this` : 'No votes yet'}
+            <Txt style={[type.caption, styles.flex]} numberOfLines={1}>
+              {count ? `${joinNames(fans)} would like this` : 'New for your family'}
             </Txt>
           </View>
           <PillButton label={locked ? 'Locked' : 'Lock'} outline={locked} onPress={onLock} />
@@ -338,7 +343,7 @@ const styles = StyleSheet.create({
   info: { gap: 6, paddingTop: 14, paddingBottom: 16, paddingHorizontal: 16 },
   hint: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 },
-  voters: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  voters: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 8 },
   reactions: {
     flexDirection: 'row',
     alignItems: 'center',

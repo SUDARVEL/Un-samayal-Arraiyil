@@ -23,7 +23,7 @@ export default function PlanTimeScreen() {
 
   return (
     <Screen gap={14}>
-      <ProgressRow step={5} onBack={() => router.back()} onSkip={onSkip} />
+      <ProgressRow step={6} onBack={() => router.back()} onSkip={onSkip} />
       <Question title={'When do you decide\ntomorrow’s food?'} />
       <Image source={images.night} style={styles.image} contentFit="cover" />
 

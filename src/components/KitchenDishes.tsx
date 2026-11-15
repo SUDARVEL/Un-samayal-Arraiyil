@@ -8,7 +8,8 @@ import CheckIcon from '../../assets/icons/icon-check.svg';
 import { DishImage } from '@/components/DishArt';
 import { Button, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
-import { allDishes, allowedDishes, type Dish } from '@/lib/dishes';
+import { Segmented } from '@/components/app';
+import { allDishes, allowedDishes, MEALS, mealLabel, type Dish, type Meal } from '@/lib/dishes';
 import { useOnboarding } from '@/lib/onboarding';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { colors, type } from '@/theme';
@@ -19,16 +20,19 @@ export function KitchenDishes() {
   const { answers, save } = useOnboarding();
   const { customDishes } = useAppData();
   const [busy, setBusy] = useState(false);
+  const [meal, setMeal] = useState<Meal | 'all'>('all');
   const usual = new Set(answers.dishes.map(lower));
 
   // Dishes that fit the family, your usual ones first.
-  const fitting = allowedDishes(answers);
+  const fitting = allowedDishes(answers, meal === 'all' ? undefined : meal);
   const sorted = [...fitting].sort((a, b) => Number(usual.has(lower(b.name))) - Number(usual.has(lower(a.name))));
   const ownIds = new Set(customDishes.map((d) => d.id));
   // Usual dishes typed in during onboarding that aren't a dish in the app yet.
   const loose = answers.dishes.filter((n) => !allDishes().some((d) => lower(d.name) === lower(n)));
   // Own dishes left out by diet or allergy answers, so they can still be edited.
-  const hidden = customDishes.filter((d) => !fitting.some((f) => f.id === d.id));
+  const hidden = customDishes.filter(
+    (d) => !allowedDishes(answers).some((f) => f.id === d.id) && (meal === 'all' || d.meals.includes(meal)),
+  );
 
   const toggle = async (dish: Dish) => {
     const on = usual.has(lower(dish.name));
@@ -57,7 +61,9 @@ export function KitchenDishes() {
           <View style={styles.flex}>
             <Txt style={[type.bodyStrong, dimmed && { color: colors.muted }]}>{dish.name}</Txt>
             <Txt style={type.caption} numberOfLines={1}>
-              {dimmed ? 'Doesn’t fit your diet or allergies' : own ? `Your dish · ${dish.cookMins} min` : dish.combo}
+              {dimmed
+                ? 'Doesn’t fit your diet or allergies'
+                : `${dish.meals.map(mealLabel).join(', ')} · ${own ? 'your dish' : dish.combo}`}
             </Txt>
           </View>
         </Pressable>
@@ -84,6 +90,13 @@ export function KitchenDishes() {
 
   return (
     <>
+      <View style={styles.filter}>
+        <Segmented<Meal | 'all'>
+          options={[{ id: 'all', label: 'All' }, ...MEALS.map((m) => ({ id: m.id, label: m.label }))]}
+          value={meal}
+          onChange={setMeal}
+        />
+      </View>
       <Txt style={type.caption}>
         {`Tick what you usually cook. Ticked dishes are suggested first${count ? ` · ${count} ticked` : ''}.`}
       </Txt>
@@ -137,5 +150,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   boxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filter: { alignSelf: 'center' },
   loose: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
 });

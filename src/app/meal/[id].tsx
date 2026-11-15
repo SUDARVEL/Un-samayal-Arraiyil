@@ -13,18 +13,21 @@ import { DishImage } from '@/components/DishArt';
 import { IconCircle, PillButton } from '@/components/app';
 import { Button, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
-import { comboFor, dishById, PART_SWAPS, partImage, partsFor, type PartRole } from '@/lib/dishes';
+import { comboFor, dishById, mealLabel, PART_SWAPS, partImage, partsFor, type Meal, type PartRole } from '@/lib/dishes';
 import { batterReady, dayName, openWhatsApp, whyThis } from '@/lib/insights';
 import { useOnboarding } from '@/lib/onboarding';
-import { swapOption, wantersOf } from '@/lib/plans';
+import { swapOption } from '@/lib/plans';
 import { cardShadow, colors, type } from '@/theme';
 
 export default function MealDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, meal: mealParam } = useLocalSearchParams<{ id: string; meal?: string }>();
+  const meal: Meal = mealParam === 'lunch' || mealParam === 'dinner' ? mealParam : 'breakfast';
   const insets = useSafeAreaInsets();
   const { answers } = useOnboarding();
   const app = useAppData();
-  const { plan, members, saved } = app;
+  const { members, saved } = app;
+  const plan = app.plans[meal];
+  const mealName = mealLabel(meal).toLowerCase();
   const dish = dishById(id ?? '');
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/home'));
@@ -43,20 +46,20 @@ export default function MealDetail() {
   const overrides = plan.parts[dish.id];
   const combo = comboFor(dish, overrides);
   const family = members.filter((m) => !m.owner);
-  const wanters = wantersOf(plan, dish.id).length;
+  const fans = members.filter((m) => m.loves.includes(dish.id)).map((m) => (m.owner ? 'You' : m.name));
   const locked = plan.chosenId === dish.id;
   const prepDone = !dish.needsBatter || batterReady(app.today);
 
   const swapPart = async (role: PartRole) => {
     if (role === 'Base') {
       // A different base means a different idea.
-      const next = swapOption(plan, dish.id, answers, app.avoid);
+      const next = swapOption(plan, dish.id, answers, app.avoid, app.liked);
       if (!next) {
         Alert.alert('No more ideas', 'That’s every dish that fits your family. Edit your preferences to see more.');
         return;
       }
       const newId = next.optionIds[index];
-      if (await app.updatePlan(next)) router.replace({ pathname: '/meal/[id]', params: { id: newId } });
+      if (await app.updatePlan(next)) router.replace({ pathname: '/meal/[id]', params: { id: newId, meal } });
       return;
     }
     const current = partsFor(dish, overrides).find((x) => x.role === role)?.name ?? '';
@@ -66,7 +69,7 @@ export default function MealDetail() {
   };
 
   const share = () =>
-    openWhatsApp(`${dayName(plan.date)} breakfast idea: ${combo}. ${dish.cookMins} min to cook.`);
+    openWhatsApp(`${dayName(plan.date)} ${mealName}: ${combo}. ${dish.cookMins} min to cook.`);
 
   const lock = async () => {
     if (locked) return goBack();
@@ -81,7 +84,7 @@ export default function MealDetail() {
           <View style={styles.titleShadow}>
             <View style={styles.titleCard}>
               <Txt style={[type.eyebrow, styles.center]}>
-                {index >= 0 ? `Option ${index + 1} · ${dayName(plan.date)} breakfast` : `${dayName(plan.date)} breakfast`}
+                {index >= 0 ? `Option ${index + 1} · ${dayName(plan.date)} ${mealName}` : `${dayName(plan.date)} ${mealName}`}
               </Txt>
               <Txt style={[type.title, styles.center]}>{combo}</Txt>
               <Txt style={[type.eyebrow, styles.center, { color: colors.teal }]}>
@@ -94,7 +97,7 @@ export default function MealDetail() {
             <Stat icon={<ClockIcon />} value={`${dish.cookMins} min`} label="Cook time" />
             <Stat icon={<MoonIcon />} value={prepDone ? 'No prep' : 'Batter'} label="Tonight" />
             {family.length ? (
-              <Stat icon={<PeopleIcon />} value={`${wanters} of ${family.length}`} label="Want it" />
+              <Stat icon={<PeopleIcon />} value={`${fans.length} of ${family.length + 1}`} label="Would like it" />
             ) : (
               <Stat icon={<PeopleIcon />} value={String(answers.peopleCount)} label="People" />
             )}
@@ -139,9 +142,7 @@ export default function MealDetail() {
       </View>
 
       <View style={[styles.bottomBar, { paddingBottom: Math.max(34, insets.bottom + 14) }]}>
-        <View style={styles.flex}>
-          <Button label="Ask family" variant="secondary" onPress={() => router.navigate('/home/ask')} />
-        </View>
+        
         <View style={styles.flex}>
           <Button label={locked ? 'Locked in' : 'Lock meal'} onPress={lock} />
         </View>

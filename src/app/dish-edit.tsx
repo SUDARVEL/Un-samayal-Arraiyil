@@ -7,7 +7,7 @@ import { CLOTH_COLOURS, DishArt, FOOD_COLOURS, SHAPES } from '@/components/DishA
 import { BackButton, Button, Chip, Screen, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
 import { useOnboarding } from '@/lib/onboarding';
-import { dishById, nameTaken, PART_SWAPS, type ArtShape, type DishPart } from '@/lib/dishes';
+import { dishById, MEALS, nameTaken, PART_SWAPS, type ArtShape, type DishPart, type Meal } from '@/lib/dishes';
 import { colors, fonts, type } from '@/theme';
 
 type Diet = 'veg' | 'egg' | 'fish' | 'meat';
@@ -48,6 +48,7 @@ export default function DishEdit() {
   const [main, setMain] = useState(existing ? partOf('Main') : 'Sambar');
   const [side, setSide] = useState(existing ? partOf('Side') : 'Coconut chutney');
   const [mins, setMins] = useState(existing?.cookMins ?? 20);
+  const [meals, setMeals] = useState<Meal[]>(existing?.meals ?? ['breakfast']);
   const [batter, setBatter] = useState(existing?.needsBatter ?? false);
   const [diet, setDiet] = useState<Diet>(
     (['meat', 'fish', 'egg'] as Diet[]).find((t) => existing?.tags.includes(t)) ?? 'veg',
@@ -76,7 +77,7 @@ export default function DishEdit() {
     setBusy(true);
     const tags = [...(diet === 'veg' ? [] : [diet]), ...contains.map((c) => c.toLowerCase())];
     const saved = await saveDish(
-      { name: trimmed, parts, cookMins: mins, needsBatter: batter, tags, art: { shape, food, bg } },
+      { name: trimmed, parts, cookMins: mins, needsBatter: batter, tags, art: { shape, food, bg }, meals },
       editing ? existing!.id : undefined,
     );
     if (saved) {
@@ -129,6 +130,25 @@ export default function DishEdit() {
           />
         </View>
       </View>
+
+      <Section title="When do you make it?">
+        {MEALS.map((m) => (
+          <Chip
+            key={m.id}
+            label={m.label}
+            selected={meals.includes(m.id)}
+            onPress={() =>
+              setMeals(
+                meals.includes(m.id)
+                  ? meals.length > 1
+                    ? meals.filter((x) => x !== m.id)
+                    : meals
+                  : MEALS.map((x) => x.id).filter((x) => x === m.id || meals.includes(x)),
+              )
+            }
+          />
+        ))}
+      </Section>
 
       <Section title="Looks like">
         {SHAPES.map((s) => (

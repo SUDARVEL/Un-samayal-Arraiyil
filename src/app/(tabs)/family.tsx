@@ -90,7 +90,12 @@ export default function Family() {
           >
             <Avatar initial={m.name.charAt(0).toUpperCase()} size={44} color={tintFor(members, m.name)} />
             <View style={styles.memberText}>
-              <Txt style={type.bodyStrong}>{m.name}</Txt>
+              <Txt style={type.bodyStrong}>
+                {m.name}
+                {m.owner || m.relation ? (
+                  <Txt style={[type.caption, styles.relation]}>{`  ·  ${m.owner ? 'You' : m.relation}`}</Txt>
+                ) : null}
+              </Txt>
               <Txt style={type.caption}>{m.loves.length ? `Loves ${names(m.loves)}` : 'Tap to add favourites'}</Txt>
               {m.notAgain.length ? (
                 <Txt style={[type.caption, { color: colors.chilli }]}>{`Not again: ${names(m.notAgain)}`}</Txt>
@@ -210,6 +215,7 @@ const styles = StyleSheet.create({
   member: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   divider: { borderBottomWidth: 1, borderBottomColor: colors.border },
   memberText: { flex: 1, gap: 1 },
+  relation: { fontFamily: fonts.semiBold },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   input: {
     flexDirection: 'row',

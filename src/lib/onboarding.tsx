@@ -24,6 +24,8 @@ export type OnboardingAnswers = {
   allergies: string[];
   dishes: string[];
   members: string[];
+  /** Member name → how they're related to you ("Son", "Mother-in-law", ...). */
+  relations: Record<string, string>;
   dislikes: Record<DislikeTarget, string[]>;
   planTime: PlanTime;
   reminderTime: string;
@@ -39,6 +41,7 @@ const initialAnswers: OnboardingAnswers = {
   allergies: ['Peanut'],
   dishes: ['Dosa', 'Idli', 'Pongal', 'Sambar rice'],
   members: ['Ravi', 'Divya', 'Karthik'],
+  relations: { Ravi: 'Husband', Divya: 'Daughter', Karthik: 'Son' },
   dislikes: { everyone: ['Bitter gourd', 'Mushroom'] },
   planTime: 'night_before',
   reminderTime: '8:30 pm',
@@ -174,7 +177,7 @@ export async function saveOnboarding(
     if (!a.members.includes(m.name)) continue;
     const { error } = await supabase
       .from('samayal_household_members')
-      .update({ dislikes: a.dislikes[m.name] ?? [] })
+      .update({ dislikes: a.dislikes[m.name] ?? [], relation: a.relations[m.name] ?? '' })
       .eq('id', m.id);
     if (error) return fail(error.message);
   }
@@ -182,7 +185,12 @@ export async function saveOnboarding(
   const added = a.members.filter((name) => !known.has(name));
   if (added.length) {
     const { error } = await supabase.from('samayal_household_members').insert(
-      added.map((name) => ({ household_id: household.id, name, dislikes: a.dislikes[name] ?? [] })),
+      added.map((name) => ({
+        household_id: household.id,
+        name,
+        dislikes: a.dislikes[name] ?? [],
+        relation: a.relations[name] ?? '',
+      })),
     );
     if (error) return fail(error.message);
   }
@@ -210,13 +218,17 @@ export async function loadSavedAnswers(): Promise<{
 
   const { data: members, error: membersError } = await supabase
     .from('samayal_household_members')
-    .select('name, dislikes')
+    .select('name, dislikes, relation')
     .eq('household_id', h.id)
     .order('created_at');
   if (membersError) return { error: membersError.message };
 
   const dislikes: Record<string, string[]> = { everyone: h.dislikes ?? [] };
-  for (const m of members ?? []) dislikes[m.name] = m.dislikes ?? [];
+  const relations: Record<string, string> = {};
+  for (const m of members ?? []) {
+    dislikes[m.name] = m.dislikes ?? [];
+    relations[m.name] = m.relation ?? '';
+  }
 
   return {
     householdId: h.id,
@@ -228,10 +240,25 @@ export async function loadSavedAnswers(): Promise<{
       allergies: h.allergies ?? [],
       dishes: h.usual_dishes ?? [],
       members: (members ?? []).map((m) => m.name),
+      relations,
       dislikes,
       planTime: h.plan_time,
       reminderTime: h.reminder_time,
       remindersEnabled: h.reminders_enabled,
     },
   };
+}
+
+/**
+ * Renames a saved family member in place, so their favourites and "not again" stay with them.
+ * Does nothing before onboarding has been saved (there is no row yet).
+ */
+export async function renameSavedMember(householdId: string | null, from: string, to: string) {
+  if (!isSupabaseConfigured || !householdId || from === to) return {};
+  const { error } = await supabase
+    .from('samayal_household_members')
+    .update({ name: to })
+    .eq('household_id', householdId)
+    .eq('name', from);
+  return { error: error?.message };
 }

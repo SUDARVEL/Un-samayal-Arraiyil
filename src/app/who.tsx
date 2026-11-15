@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import MinusIcon from '../../assets/icons/icon-minus.svg';
 import PlusIcon from '../../assets/icons/icon-plus.svg';
+import { FamilyMembers, resizeFamily } from '@/components/FamilyMembers';
 import { Button, ProgressRow, Question, Screen, SelectedBadge, Spacer, Txt } from '@/components/ui';
 import { useOnboarding, type HouseholdType } from '@/lib/onboarding';
 import { useEditMode } from '@/lib/useEditMode';
@@ -41,7 +42,7 @@ export default function Who() {
               key={o.id}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              onPress={() => update({ household: o.id, peopleCount: o.people })}
+              onPress={() => update({ household: o.id, ...resizeFamily(answers, o.people) })}
               style={[styles.card, { width: cardWidth }, selected && styles.cardSelected]}
             >
               <Image source={o.image} style={styles.cardImage} contentFit="cover" />
@@ -62,7 +63,7 @@ export default function Who() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Fewer people"
-          onPress={() => update({ peopleCount: Math.max(1, answers.peopleCount - 1) })}
+          onPress={() => update(resizeFamily(answers, Math.max(1, answers.peopleCount - 1)))}
           style={[styles.round, styles.minus]}
         >
           <MinusIcon />
@@ -71,12 +72,14 @@ export default function Who() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="More people"
-          onPress={() => update({ peopleCount: Math.min(30, answers.peopleCount + 1) })}
+          onPress={() => update(resizeFamily(answers, Math.min(30, answers.peopleCount + 1)))}
           style={[styles.round, styles.plus]}
         >
           <PlusIcon />
         </Pressable>
       </View>
+
+      <FamilyMembers />
 
       <Spacer />
       <Button label={buttonLabel} onPress={onContinue} disabled={saving} />

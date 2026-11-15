@@ -6,6 +6,8 @@ import { isSupabaseConfigured, supabase } from './supabase';
 export type Member = {
   name: string;
   owner: boolean;
+  /** How they're related to the cook ("Son"); empty when not set. */
+  relation: string;
   /** Dish ids. */
   loves: string[];
   /** Dish ids they don't want again for a while. */
@@ -44,7 +46,7 @@ export async function loadMembers(
   ownerName: string,
   memberNames: string[],
 ): Promise<Member[]> {
-  const blank = (name: string, owner: boolean): Member => ({ name, owner, loves: [], notAgain: [] });
+  const blank = (name: string, owner: boolean): Member => ({ name, owner, relation: '', loves: [], notAgain: [] });
   const fallback = [blank(ownerName, true), ...memberNames.map((n) => blank(n, false))];
   if (!isSupabaseConfigured || !householdId) return fallback;
 
@@ -56,7 +58,7 @@ export async function loadMembers(
       .single(),
     supabase
       .from('samayal_household_members')
-      .select('name, loves, not_again')
+      .select('name, relation, loves, not_again')
       .eq('household_id', householdId)
       .order('created_at'),
   ]);
@@ -67,12 +69,14 @@ export async function loadMembers(
     {
       name: ownerName,
       owner: true,
+      relation: '',
       loves: household.data.owner_loves ?? [],
       notAgain: household.data.owner_not_again ?? [],
     },
     ...(members.data ?? []).map((m) => ({
       name: m.name,
       owner: false,
+      relation: m.relation ?? '',
       loves: m.loves ?? [],
       notAgain: m.not_again ?? [],
     })),

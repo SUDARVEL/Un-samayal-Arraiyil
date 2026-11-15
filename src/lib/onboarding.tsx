@@ -156,20 +156,35 @@ export async function saveOnboarding(
     .single();
   if (householdError) return { error: householdError.message };
 
-  const { error: clearError } = await supabase
+  // Keep existing member rows (they hold loves / "not again" from the Family tab):
+  // remove people no longer listed, update dislikes, add new people.
+  const fail = (message: string) => ({ error: message, householdId: household.id });
+  const { data: existing, error: readError } = await supabase
     .from('samayal_household_members')
-    .delete()
+    .select('id, name')
     .eq('household_id', household.id);
-  if (clearError) return { error: clearError.message, householdId: household.id };
-  if (a.members.length) {
-    const { error: membersError } = await supabase.from('samayal_household_members').insert(
-      a.members.map((name) => ({
-        household_id: household.id,
-        name,
-        dislikes: a.dislikes[name] ?? [],
-      })),
+  if (readError) return fail(readError.message);
+
+  const gone = (existing ?? []).filter((m) => !a.members.includes(m.name)).map((m) => m.id);
+  if (gone.length) {
+    const { error } = await supabase.from('samayal_household_members').delete().in('id', gone);
+    if (error) return fail(error.message);
+  }
+  for (const m of existing ?? []) {
+    if (!a.members.includes(m.name)) continue;
+    const { error } = await supabase
+      .from('samayal_household_members')
+      .update({ dislikes: a.dislikes[m.name] ?? [] })
+      .eq('id', m.id);
+    if (error) return fail(error.message);
+  }
+  const known = new Set((existing ?? []).map((m) => m.name));
+  const added = a.members.filter((name) => !known.has(name));
+  if (added.length) {
+    const { error } = await supabase.from('samayal_household_members').insert(
+      added.map((name) => ({ household_id: household.id, name, dislikes: a.dislikes[name] ?? [] })),
     );
-    if (membersError) return { error: membersError.message, householdId: household.id };
+    if (error) return fail(error.message);
   }
 
   return { householdId: household.id };

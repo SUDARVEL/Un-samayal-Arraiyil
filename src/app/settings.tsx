@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Alert, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { BackButton, Button, Screen, SkipLink, Spacer, Txt } from '@/components/ui';
+import { useAppData } from '@/lib/app-data';
 import { useOnboarding, type HouseholdType, type PlanTime } from '@/lib/onboarding';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors, fonts, GUTTER, type } from '@/theme';
@@ -28,6 +29,7 @@ const listOrNone = (items: string[], none: string) => (items.length ? items.join
 
 export default function Settings() {
   const { answers, save, reset } = useOnboarding();
+  const { clear } = useAppData();
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(answers.name);
 
@@ -61,6 +63,7 @@ export default function Settings() {
     if (Platform.OS !== 'web') await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
     if (isSupabaseConfigured) await supabase.auth.signOut();
     reset();
+    clear();
     if (router.canDismiss()) router.dismissAll();
     router.replace('/intro-decide');
   };

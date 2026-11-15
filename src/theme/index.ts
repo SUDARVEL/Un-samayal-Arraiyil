@@ -15,6 +15,8 @@ export const colors = {
   turmericTint: '#FDF2CF',
   chilliTint: '#FCE2D7',
   violetTint: '#ECE6F6',
+  chilli: '#E2552A',
+  leaf: '#4F8A2F',
 } as const;
 
 export const fonts = {
@@ -24,6 +26,7 @@ export const fonts = {
   extraBold: 'Nunito_800ExtraBold',
   black: 'Nunito_900Black',
   mono: 'SpaceMono_400Regular',
+  monoBold: 'SpaceMono_700Bold',
 } as const;
 
 /** Text styles named exactly as the Figma text styles. */
@@ -50,6 +53,14 @@ export const type = {
     textDecorationLine: 'underline',
     color: colors.ink,
   },
+  /** Small pill buttons (Lock, Swap, Yes, made it). */
+  smallButton: {
+    fontFamily: fonts.extraBold,
+    fontSize: 12,
+    lineHeight: 18,
+    letterSpacing: 0.72,
+    textTransform: 'uppercase',
+  },
   button: {
     fontFamily: fonts.extraBold,
     fontSize: 14,
@@ -61,6 +72,10 @@ export const type = {
 
 /** 0px 8px 24px rgba(0,0,0,0.12) — the only shadow in the file. */
 export const shadow = { boxShadow: '0px 8px 24px 0px rgba(0, 0, 0, 0.12)' } as const;
+
+/** Card shadows on the A1–A6 app screens. */
+export const cardShadow = { boxShadow: '0px 6px 20px 0px rgba(0, 0, 0, 0.1)' } as const;
+export const softShadow = { boxShadow: '0px 6px 20px 0px rgba(0, 0, 0, 0.08)' } as const;
 
 /** Horizontal padding of every screen's content frame. */
 export const GUTTER = 24;

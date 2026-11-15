@@ -6,7 +6,7 @@ import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import {
   Animated,
   Easing,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -286,11 +286,25 @@ export function Sheet({
   // A modal draws above everything, so hide it while its screen isn't the one on show
   // (e.g. after switching tabs) instead of leaving it over another screen.
   const focused = useIsFocused();
+  const keyboard = useKeyboardHeight();
   return (
-    <Modal visible={visible && focused} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <Modal
+      visible={visible && focused}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent
+    >
+      <View style={styles.fill}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
+        {/* Sits right above the keyboard while typing, so the field never ends up under it. */}
+        <View
+          style={[
+            styles.sheet,
+            { marginBottom: keyboard, paddingBottom: keyboard ? 16 : Math.max(insets.bottom, 16) + 12 },
+          ]}
+        >
           <View style={styles.sheetHeader}>
             <Txt style={type.title}>{title}</Txt>
             {subtitle ? <Txt style={type.caption}>{subtitle}</Txt> : null}
@@ -300,9 +314,27 @@ export function Sheet({
           </ScrollView>
           {actions ? <View style={styles.sheetActions}>{actions}</View> : null}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
+}
+
+/** Height of the on-screen keyboard (0 when hidden). */
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    // iOS reports before the animation, Android only after it.
+    const show = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hide = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const a = Keyboard.addListener(show, (e) => setHeight(e.endCoordinates.height));
+    const b = Keyboard.addListener(hide, () => setHeight(0));
+    return () => {
+      a.remove();
+      b.remove();
+    };
+  }, []);
+  return height;
 }
 
 export function LoadingState({ label }: { label: string }) {

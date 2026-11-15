@@ -1,15 +1,16 @@
 // 21 Settings: review and edit every onboarding answer, rename, sign out.
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { Sheet } from '@/components/app';
 import { BackButton, Button, Screen, SkipLink, Spacer, Txt } from '@/components/ui';
 import { useAppData } from '@/lib/app-data';
 import { useOnboarding, type HouseholdType, type PlanTime } from '@/lib/onboarding';
 import { cancelReminders, MORNING_TIME, scheduleDailyReminder } from '@/lib/reminders';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { checkForAppUpdate, restartIntoUpdate, versionLabel } from '@/lib/updates';
-import { colors, fonts, GUTTER, type } from '@/theme';
+import { colors, fonts, type } from '@/theme';
 
 const HOUSEHOLD: Record<HouseholdType, string> = {
   just_me: 'Just me',
@@ -158,24 +159,26 @@ export default function Settings() {
       <Button label="Sign out" variant="secondary" onPress={confirmSignOut} />
       <Txt style={[type.caption, styles.center]}>Signing out removes your kitchen from this phone.</Txt>
 
-      <Modal visible={renaming} transparent animationType="fade" onRequestClose={() => setRenaming(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setRenaming(false)}>
-          <Pressable style={styles.sheet}>
-            <Txt style={type.heading}>Your name</Txt>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              onSubmitEditing={saveName}
-              placeholder="Lakshmi"
-              placeholderTextColor={colors.muted}
-              autoFocus
-              autoCapitalize="words"
-              style={styles.input}
-            />
-            <Button label="Save" onPress={saveName} />
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <Sheet
+        visible={renaming}
+        title="Your name"
+        subtitle="What Samayal and your family call you."
+        onClose={() => setRenaming(false)}
+        actions={<Button label="Save" onPress={saveName} disabled={!draft.trim()} />}
+      >
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          onSubmitEditing={saveName}
+          placeholder="Lakshmi"
+          placeholderTextColor={colors.muted}
+          autoFocus
+          autoCapitalize="words"
+          returnKeyType="done"
+          maxLength={40}
+          style={styles.input}
+        />
+      </Sheet>
     </Screen>
   );
 }
@@ -217,13 +220,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   rowText: { flex: 1, gap: 2 },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'center',
-    paddingHorizontal: GUTTER,
-  },
-  sheet: { backgroundColor: colors.surface, borderRadius: 24, padding: 20, gap: 16 },
   input: {
     borderWidth: 1.5,
     borderColor: colors.border,
